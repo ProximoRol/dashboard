@@ -4,14 +4,13 @@
 
 // ── PASSWORD GATE ──
 // Password is never stored in plain text — only its SHA-256 hash lives here.
-// To change password: compute sha256 of your new password and replace PW_HASH.
-(function(){
-  const PW_HASH = 'bb883758bd3589bd2fcbe86de4f34db5543bc85e7ede7b740ad9a7a91aed57f0';
-  const KEY = 'pr_dash_v2';
-  if(localStorage.getItem(KEY) === PW_HASH){
-    document.getElementById('pw-gate').style.display='none';
-  }
-})();
+// To change password: compute sha256 of new password and replace PW_HASH.
+const PW_HASH = 'bb883758bd3589bd2fcbe86de4f34db5543bc85e7ede7b740ad9a7a91aed57f0';
+const PW_KEY  = 'pr_dash_v2';
+if(localStorage.getItem(PW_KEY) === PW_HASH){
+  const el = document.getElementById('pw-gate');
+  if(el) el.style.display = 'none';
+}
 
 async function hashStr(str){
   const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(str));
@@ -19,12 +18,10 @@ async function hashStr(str){
 }
 
 async function checkPw(){
-  const PW_HASH = 'bb883758bd3589bd2fcbe86de4f34db5543bc85e7ede7b740ad9a7a91aed57f0';
-  const KEY = 'pr_dash_v2';
   const val = document.getElementById('pw-input').value;
   const hash = await hashStr(val);
   if(hash === PW_HASH){
-    localStorage.setItem(KEY, PW_HASH);
+    localStorage.setItem(PW_KEY, PW_HASH);
     document.getElementById('pw-gate').style.display='none';
   } else {
     const err = document.getElementById('pw-err');
