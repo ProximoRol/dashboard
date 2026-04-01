@@ -281,3 +281,20 @@ function biResetForm() {
   biSave(BI_DEFAULTS);
   renderIdentityTab();
 }
+
+/* ── Entry point — called from the tab button in index.html ── */
+function csShowIdentity() {
+  try {
+    document.querySelectorAll('.cs-tab').forEach(t => t.classList.remove('active'));
+    const idBtn = document.getElementById('cs-identity-tab-btn');
+    if (idBtn) idBtn.classList.add('active');
+    const mainForm = document.getElementById('cs-main-form');
+    if (mainForm) mainForm.style.display = 'none';
+    const idPanel = document.getElementById('cs-identity-panel');
+    if (!idPanel) { console.error('cs-identity-panel not found'); return; }
+    idPanel.style.display = 'block';
+    renderIdentityTab();
+  } catch(e) {
+    console.error('csShowIdentity error:', e);
+  }
+}
