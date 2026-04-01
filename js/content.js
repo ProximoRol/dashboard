@@ -3,9 +3,6 @@
    Depends on: core.js (CFG, antFetch, setNB)
    ═══════════════════════════════════════════════ */
 
-/* ══════════════════════════════════════════════════════
-   CONTENT STUDIO
-   ══════════════════════════════════════════════════════ */
 let CS_AGENT='instagram',CS_CHAT_HISTORY=[],CS_LAST_CONTENT='';
 const CS_AGENTS={
   instagram:{title:'Agente Instagram / TikTok',badge:'Reel · Post',badgeClass:'bg-p',placeholder:'Ej: El 73% de los reclutadores descarta candidatos en los primeros 30 segundos',
@@ -27,7 +24,32 @@ Marca con [VERIFICAR] datos que no puedas confirmar.`},
     system:`Eres el agente especialista en YouTube de Próximo Rol, servicio de coaching de entrevistas para profesionales en España, UK y LATAM.
 REGLAS: Primeros 30 segundos críticos para retención. Gancho con promesa específica. Patrón: Gancho → Credibilidad → Desarrollo → Resumen → CTA.
 ESTRUCTURA: [GANCHO 0:00-0:30] [CREDIBILIDAD 0:30-1:00] [DESARROLLO 1:00-7:00 con 3-5 puntos numerados] [RESUMEN 7:00-8:00] [CTA 8:00-8:30] [DESCRIPCIÓN SEO]
-Marca con [VERIFICAR] datos que no puedas confirmar.`}
+Marca con [VERIFICAR] datos que no puedas confirmar.`},
+  ads:{title:'Agente Google Ads',badge:'Anuncios · Copy',badgeClass:'bg-a',placeholder:'Ej: Sesión de coaching para tu próxima entrevista / Pack completo de preparación',
+    system:`Eres el agente especialista en Google Ads de Próximo Rol, servicio de coaching de entrevistas para profesionales en España, UK y LATAM.
+REGLAS GOOGLE ADS:
+- Headline: máx 30 caracteres. Necesitas al menos 3 variantes.
+- Description: máx 90 caracteres. Al menos 2 variantes.
+- El keyword principal debe aparecer en al menos 1 headline.
+- Usar números concretos cuando sea posible ("87% de éxito", "1 sesión").
+- CTA directo: "Reserva ahora", "Empieza hoy", "Prueba gratis".
+- Incluir propuesta de valor única: qué hace diferente a Próximo Rol.
+- Para España: usar "entrevista de trabajo". Para LATAM: "entrevista laboral".
+ESTRUCTURA DE SALIDA:
+CAMPAÑA: [nombre sugerido]
+HEADLINES (máx 30 chars cada uno):
+1. ...
+2. ...
+3. ...
+4. ...
+5. ...
+DESCRIPTIONS (máx 90 chars cada uno):
+1. ...
+2. ...
+EXTENSIONES SUGERIDAS:
+- Sitelinks: ...
+- Callouts: ...
+KEYWORDS SUGERIDAS: [lista de 8-10 keywords relevantes con match type]`}
 };
 
 function csTab(agent,el){
@@ -39,6 +61,9 @@ function csTab(agent,el){
   document.getElementById('cs-agent-badge').textContent=cfg.badge;
   document.getElementById('cs-agent-badge').className='bg '+cfg.badgeClass;
   document.getElementById('cs-topic').placeholder=cfg.placeholder;
+  // Show/hide depth field — not relevant for ads
+  const depthGroup=document.getElementById('cs-depth-wrap');
+  if(depthGroup) depthGroup.style.display = agent==='ads' ? 'none' : 'block';
 }
 
 function csInitChips(){
@@ -65,6 +90,7 @@ async function csGenerate(){
   if(!CFG.ak){alert('Configura tu API Key de Anthropic en ⚙️ Settings.');showP('settings',null);return;}
   const tone=csGetChip('cs-tone-chips');
   const depth=csGetChip('cs-depth-chips');
+  const notes=(document.getElementById('cs-notes')||{}).value?.trim()||'';
   const cfg=CS_AGENTS[CS_AGENT];
   const btn=document.getElementById('cs-gen-btn');
   btn.disabled=true;
@@ -74,7 +100,12 @@ async function csGenerate(){
   const copyBtn=document.getElementById('cs-copy-btn');
   outEl.innerHTML='<div style="padding:24px;text-align:center;color:var(--ht)"><div style="font-size:22px;margin-bottom:8px">⏳</div><div>Generando contenido…</div></div>';
   copyBtn.style.display='none';
-  const userPrompt=`NEGOCIO: Próximo Rol — coaching de entrevistas para profesionales en España, UK y LATAM. Web: proximorol.com. Servicios: sesión única, pack completo, acompañamiento total. Audiencia: profesionales 28-45 años.\n\nTAREA: Crea contenido para ${cfg.title.replace('Agente ','')} sobre:\n"${topic}"\n\nTONO: ${tone}\nPROFUNDIDAD: ${depth}\n\nGenera SOLO el contenido listo para publicar, sin introducción ni explicaciones adicionales.`;
+
+  const notesSection = notes ? `\n\nNOTAS ADICIONALES DEL AUTOR (usa esto para enriquecer y personalizar el contenido):\n${notes}` : '';
+  const depthSection = CS_AGENT !== 'ads' ? `\nTONO: ${tone}\nPROFUNDIDAD: ${depth}` : '';
+
+  const userPrompt=`NEGOCIO: Próximo Rol — coaching de entrevistas para profesionales en España, UK y LATAM. Web: proximorol.com. Servicios: sesión única, pack completo, acompañamiento total. Audiencia: profesionales 28-45 años.\n\nTAREA: Crea contenido para ${cfg.title.replace('Agente ','')} sobre:\n"${topic}"${depthSection}${notesSection}\n\nGenera SOLO el contenido listo para publicar, sin introducción ni explicaciones adicionales.`;
+
   CS_CHAT_HISTORY=[{role:'user',content:userPrompt}];
   try{
     const data=await antFetch({model:'claude-sonnet-4-20250514',max_tokens:1200,system:cfg.system,messages:CS_CHAT_HISTORY});
