@@ -40,7 +40,7 @@ const CK='eco_v3';
 const COLORS=['#1D9E75','#2563EB','#D97706','#DC2626','#7C3AED','#0891B2','#059669','#BE185D'];
 const TC='#A8A8AC',GC='rgba(0,0,0,0.05)';
 const MONTHS=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
-const TITLES={ov:'Overview',report:'Monthly Report',ga4:'Google Analytics 4',gsc:'Search Console',ads:'Google Ads',kwi:'Keyword Intelligence',seo:'SEO Intelligence',li:'LinkedIn',inst:'Instantly',opps:'Opportunities Pipeline',mon:'Monday.com',budget:'Budget & Costs',settings:'Settings',content:'Content Studio',audit:'Content Audit'};
+const TITLES={guide:'Guía del dashboard',ov:'Overview',report:'Monthly Report',ga4:'Google Analytics 4',gsc:'Search Console',ads:'Google Ads',kwi:'Keyword Intelligence',seo:'SEO Intelligence',li:'LinkedIn',inst:'Mailing masivo',opps:'Opportunities Pipeline',mon:'CRM',budget:'Budget & Costs',settings:'Settings',content:'Content Studio',audit:'Content Audit'};
 let CFG={},TOKEN=null;
 const CH={};
 
@@ -126,6 +126,11 @@ function launch(){
     try{const u=await gF('https://www.googleapis.com/oauth2/v3/userinfo');const n=(u.name||'User').split(' ')[0];document.getElementById('sb-nm').textContent=n;document.getElementById('sb-av').textContent=n.charAt(0);}catch(e){}
     document.getElementById('ob').style.display='none';document.getElementById('app').style.display='block';
     buildSettings();loadAll();
+    // Show Guide as entry page
+    setTimeout(()=>{
+      const guideEl = document.querySelector('.ni[onclick*="guide"]');
+      showP('guide', guideEl);
+    }, 100);
   }}).requestAccessToken();
 }
 
@@ -149,6 +154,8 @@ function showP(id,el){
     requestAnimationFrame(()=>{
       if(id==='ov'){
         renderOverview();
+      } else if(id==='guide'){
+        renderGuidePage();
       } else if(id==='ga4'){
         loadGA4Intelligence();
       } else if(id==='budget'){
