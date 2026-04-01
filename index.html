@@ -130,6 +130,7 @@
       <div class="ns" style="margin-top:6px">Planning</div>
       <div class="ni" onclick="showP('budget',this)"><div class="nico">💰</div>Budget & Costs</div>
       <div class="ns" style="margin-top:6px">Content</div>
+      <div class="ni" onclick="showP('audit',this)"><div class="nico">🔬</div>Content Audit<span class="nb nb-pend" id="nb-audit">IA</span></div>
       <div class="ni" onclick="showP('content',this)"><div class="nico">✍️</div>Content Studio<span class="nb nb-pend" id="nb-content">IA</span></div>
       <div class="ns" style="margin-top:6px">Account</div>
       <div class="ni" onclick="showP('settings',this)"><div class="nico">⚙️</div>Settings</div>
@@ -884,6 +885,25 @@
   </div>
 </div>
 
+<div class="page" id="page-audit">
+  <div class="sh"><span class="sl">Content Audit</span><div class="sln"></div></div>
+  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;flex-wrap:wrap;gap:10px">
+    <div style="display:flex;gap:6px">
+      <span class="ca-range-chip dp active" onclick="caSetRange(30,this)">30d</span>
+      <span class="ca-range-chip dp" onclick="caSetRange(90,this)">90d</span>
+      <span class="ca-range-chip dp" onclick="caSetRange(180,this)">6m</span>
+      <span class="ca-range-chip dp" onclick="caSetRange(365,this)">1y</span>
+    </div>
+    <button id="ca-scan-btn" onclick="caRunScan()" style="display:flex;align-items:center;gap:6px;padding:8px 18px;background:var(--green);color:white;border:none;border-radius:var(--r);font-size:12px;font-weight:500;cursor:pointer;font-family:'DM Sans',sans-serif">
+      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+      Escanear contenido
+    </button>
+  </div>
+  <div id="audit-main">
+    <div class="notice"><strong>Listo para escanear</strong>Selecciona el rango de fechas y pulsa "Escanear contenido". El agente leerá tu blog, LinkedIn, Search Console y GA4 automáticamente.</div>
+  </div>
+</div>
+
 <div class="page" id="page-content">
   <div class="sh"><span class="sl">Content Studio</span><div class="sln"></div></div>
   <div style="display:flex;gap:6px;margin-bottom:16px;flex-wrap:wrap" id="cs-tabs">
@@ -986,26 +1006,4 @@
   <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px">
     <button onclick="setQuickRange('ytd')" style="padding:4px 9px;border:1px solid var(--bd2);border-radius:var(--r);font-size:11px;cursor:pointer;background:var(--sf2);color:var(--mt)">YTD</button>
     <button onclick="setQuickRange('q1')"  style="padding:4px 9px;border:1px solid var(--bd2);border-radius:var(--r);font-size:11px;cursor:pointer;background:var(--sf2);color:var(--mt)">Q1</button>
-    <button onclick="setQuickRange('q2')"  style="padding:4px 9px;border:1px solid var(--bd2);border-radius:var(--r);font-size:11px;cursor:pointer;background:var(--sf2);color:var(--mt)">Q2</button>
-    <button onclick="setQuickRange('last30')" style="padding:4px 9px;border:1px solid var(--bd2);border-radius:var(--r);font-size:11px;cursor:pointer;background:var(--sf2);color:var(--mt)">Last 30d</button>
-    <button onclick="setQuickRange('last90')" style="padding:4px 9px;border:1px solid var(--bd2);border-radius:var(--r);font-size:11px;cursor:pointer;background:var(--sf2);color:var(--mt)">Last 90d</button>
-  </div>
-  <div style="display:flex;gap:6px">
-    <button onclick="applyCustomRange()" style="flex:1;padding:8px;background:var(--green);color:white;border:none;border-radius:var(--r);font-size:12px;font-weight:500;cursor:pointer;font-family:'DM Sans',sans-serif">Apply range</button>
-    <button onclick="hideDatePicker()" style="padding:8px 12px;border:1px solid var(--bd2);border-radius:var(--r);font-size:12px;cursor:pointer;background:var(--sf2);color:var(--mt);font-family:'DM Sans',sans-serif">Cancel</button>
-  </div>
-</div>
-
-<!-- Dashboard modules -->
-<script src="js/core.js" defer></script>
-<script src="js/analytics.js" defer></script>
-<script src="js/social.js" defer></script>
-<script src="js/pipeline.js" defer></script>
-<script src="js/budget.js" defer></script>
-<script src="js/intelligence.js" defer></script>
-<script src="js/content.js" defer></script>
-<script defer>
-  document.addEventListener('DOMContentLoaded', () => init());
-</script>
-</body>
-</html>
+    <button onclick="setQuickRange('q2')"  style="padding:4px 9px;border:1px solid var(--
