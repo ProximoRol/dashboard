@@ -112,8 +112,9 @@
       <div><div style="font-size:13px;font-weight:600">Próximo Rol</div><div style="font-size:10px;color:var(--mt)">Marketing Intel</div></div>
     </div>
     <div class="sb-nav">
-      <div class="ns">Overview</div>
-      <div class="ni active" onclick="showP('ov',this)"><div class="nico">📊</div>Overview<span class="nb nb-live">Live</span></div>
+      <div class="ns">Inicio</div>
+      <div class="ni active" onclick="showP('guide',this)"><div class="nico">🗺️</div>Guía del dashboard<span class="nb nb-live">New</span></div>
+      <div class="ni" onclick="showP('ov',this)"><div class="nico">📊</div>Overview<span class="nb nb-live">Live</span></div>
       <div class="ni" onclick="showP('report',this)"><div class="nico">📅</div>Monthly Report<span class="nb nb-off" id="nb-rep">—</span></div>
       <div class="ns" style="margin-top:6px">Web</div>
       <div class="ni" onclick="showP('ga4',this)"><div class="nico">📈</div>Google Analytics<span class="nb nb-off" id="nb-ga4">—</span></div>
@@ -121,17 +122,24 @@
       <div class="ni" onclick="showP('ads',this)"><div class="nico">📢</div>Google Ads<span class="nb nb-off" id="nb-ads">—</span></div>
       <div class="ni" onclick="showP('kwi',this)"><div class="nico">🧠</div>Keyword Intelligence<span class="nb nb-off" id="nb-kwi">—</span></div>
       <div class="ni" onclick="showP('seo',this)"><div class="nico">🔎</div>SEO Intelligence<span class="nb nb-off" id="nb-seo">—</span></div>
-      <div class="ns" style="margin-top:6px">Social & Outreach</div>
+      <div class="ns" style="margin-top:6px">Social & Redes</div>
       <div class="ni" onclick="showP('li',this)"><div class="nico">💼</div>LinkedIn<span class="nb nb-off" id="nb-li">—</span></div>
-      <div class="ni" onclick="showP('inst',this)"><div class="nico">⚡</div>Instantly<span class="nb nb-off" id="nb-inst">—</span></div>
-      <div class="ns" style="margin-top:6px">Pipeline & Ops</div>
+      <div class="ni" onclick="showP('inst',this)"><div class="nico">📧</div>Mailing masivo<span class="nb nb-off" id="nb-inst">—</span></div>
+      <div class="ni" style="opacity:.45;cursor:default"><div class="nico">📸</div>Instagram<span class="nb nb-pend">Pronto</span></div>
+      <div class="ni" style="opacity:.45;cursor:default"><div class="nico">🎬</div>YouTube<span class="nb nb-pend">Pronto</span></div>
+      <div class="ni" style="opacity:.45;cursor:default"><div class="nico">🎵</div>TikTok<span class="nb nb-pend">Pronto</span></div>
+      <div class="ns" style="margin-top:6px">CRM & Pipeline</div>
       <div class="ni" onclick="showP('opps',this)"><div class="nico">🎯</div>Opportunities<span class="nb nb-off" id="nb-opps">—</span></div>
-      <div class="ni" onclick="showP('mon',this)"><div class="nico">📋</div>Monday.com<span class="nb nb-off" id="nb-mon">—</span></div>
+      <div class="ni" onclick="showP('mon',this)"><div class="nico">🏢</div>CRM<span class="nb nb-off" id="nb-mon">—</span></div>
       <div class="ns" style="margin-top:6px">Planning</div>
       <div class="ni" onclick="showP('budget',this)"><div class="nico">💰</div>Budget & Costs</div>
-      <div class="ns" style="margin-top:6px">Content</div>
+      <div class="ns" style="margin-top:6px">Content & IA</div>
       <div class="ni" onclick="showP('audit',this)"><div class="nico">🔬</div>Content Audit<span class="nb nb-pend" id="nb-audit">IA</span></div>
       <div class="ni" onclick="showP('content',this)"><div class="nico">✍️</div>Content Studio<span class="nb nb-pend" id="nb-content">IA</span></div>
+      <div class="ni" style="opacity:.45;cursor:default"><div class="nico">🤖</div>AI Insights<span class="nb nb-pend">Pronto</span></div>
+      <div class="ni" style="opacity:.45;cursor:default"><div class="nico">📅</div>Calendario Editorial<span class="nb nb-pend">Pronto</span></div>
+      <div class="ni" style="opacity:.45;cursor:default"><div class="nico">🎨</div>Visual Studio<span class="nb nb-pend">Pronto</span></div>
+      <div class="ni" style="opacity:.45;cursor:default"><div class="nico">📡</div>Campaign Analyzer<span class="nb nb-pend">Pronto</span></div>
       <div class="ns" style="margin-top:6px">Account</div>
       <div class="ni" onclick="showP('settings',this)"><div class="nico">⚙️</div>Settings</div>
     </div>
@@ -990,6 +998,11 @@
   </div><!-- end cs-main-form -->
 </div>
 
+<div class="page" id="page-guide">
+  <div class="sh"><span class="sl">Guía del dashboard</span><div class="sln"></div></div>
+  <div id="guide-main"></div>
+</div>
+
 <div class="page" id="page-settings">
       <div class="sh"><span class="sl">Platform Connections</span><div class="sln"></div><button class="info-btn" onclick="openInfoModal('settings')" title="What is this page?">i</button></div>
       <p style="font-size:13px;color:var(--mt);margin-bottom:1.25rem">Add or update credentials anytime. Changes take effect immediately.</p>
@@ -1047,6 +1060,7 @@
 <script src="js/identity_block.js"></script>
 <script src="js/content.js"></script>
 <script src="js/audit.js"></script>
+<script src="js/guide.js"></script>
 <script>init();</script>
 </body>
 </html>
