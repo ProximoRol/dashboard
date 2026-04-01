@@ -9,8 +9,39 @@ let CA_DATA = null;
 /* ── Entry point ── */
 function renderAuditPage() {
   setNB('audit', 'live');
-  const out = document.getElementById('audit-main');
-  if (out) out.innerHTML = `<div class="ld"><div class="sp2"></div>Listo para escanear — elige el rango y pulsa el botón.</div>`;
+  const saved = caLoadSaved();
+  if (saved) {
+    CA_DATA = saved;
+    CA_DAYS = saved.days || 30;
+    // Update range chip
+    document.querySelectorAll('.ca-range-chip').forEach(c => {
+      c.classList.toggle('active', parseInt(c.textContent) === CA_DAYS || c.textContent === CA_DAYS+'d');
+    });
+    const ago = caSavedAgo(saved.savedAt);
+    caRender(saved);
+    // Add "last scan" notice
+    const notice = document.createElement('div');
+    notice.style.cssText = 'font-size:11px;color:var(--ht);margin-bottom:12px;display:flex;align-items:center;justify-content:space-between';
+    notice.innerHTML = `<span>Mostrando último escaneo — ${ago}</span><button onclick="caRunScan()" style="font-size:11px;padding:3px 10px;border:1px solid var(--bd2);border-radius:var(--r);background:var(--sf2);color:var(--mt);cursor:pointer;font-family:'DM Sans',sans-serif">Actualizar ahora</button>`;
+    document.getElementById('audit-main').prepend(notice);
+  } else {
+    document.getElementById('audit-main').innerHTML = `<div class="notice"><strong>Listo para escanear</strong>Selecciona el rango de fechas y pulsa "Escanear contenido". El agente leerá tu blog, LinkedIn, Search Console y GA4 automáticamente.</div>`;
+  }
+}
+
+const CA_STORE = 'pr_audit_v1';
+function caSaveScan(data) {
+  try { localStorage.setItem(CA_STORE, JSON.stringify({...data, savedAt: new Date().toISOString()})); } catch(e) {}
+}
+function caLoadSaved() {
+  try { return JSON.parse(localStorage.getItem(CA_STORE) || 'null'); } catch(e) { return null; }
+}
+function caSavedAgo(isoDate) {
+  const diff = Math.round((Date.now() - new Date(isoDate)) / 60000);
+  if (diff < 1) return 'hace un momento';
+  if (diff < 60) return `hace ${diff}m`;
+  if (diff < 1440) return `hace ${Math.round(diff/60)}h`;
+  return `hace ${Math.round(diff/1440)}d`;
 }
 
 function caSetRange(days, el) {
@@ -112,6 +143,7 @@ async function caConfirmedScan() {
     const analysis = await caAnalyse(blogData, liData, gscData, ga4Data);
 
     CA_DATA = { blogData, liData, gscData, ga4Data, analysis, days: CA_DAYS };
+    caSaveScan(CA_DATA);
     caRender(CA_DATA);
 
   } catch (e) {
@@ -266,6 +298,43 @@ function caFallbackAnalysis() {
 }
 
 /* ── Render ── */
+/* ── Export ── */
+function caExportJson(){
+  const data=caLoadSaved();
+  if(!data){alert('No hay datos guardados. Ejecuta un escaneo primero.');return;}
+  const date=new Date().toISOString().split('T')[0];
+  caDownload(`PR_ContentAudit_${date}.json`, JSON.stringify(data,null,2), 'application/json');
+}
+
+function caExportTxt(){
+  const data=caLoadSaved();
+  if(!data){alert('No hay datos guardados. Ejecuta un escaneo primero.');return;}
+  const a=data.analysis||{};
+  const date=new Date().toISOString().split('T')[0];
+  const savedAgo=caSavedAgo(data.savedAt);
+  let out=`PRÓXIMO ROL — CONTENT AUDIT\nFecha: ${date} (${savedAgo})\nRango: últimos ${data.days||30} días\n${'═'.repeat(50)}\n\n`;
+  out+=`RESUMEN\n${'─'.repeat(30)}\n`;
+  const s=a.summary||{};
+  out+=`Piezas totales: ${s.total_pieces||0}\nBlog: ${s.blog_count||0} | LinkedIn: ${s.linkedin_count||0}\nTema principal: ${s.top_topic||'—'}\nCobertura: ${s.coverage_score||'—'}\n\n`;
+  out+=`TEMAS CUBIERTOS\n${'─'.repeat(30)}\n`;
+  (a.topics||[]).forEach(t=>{ out+=`• ${t.name} (${t.count}) — ${t.channels?.join(', ')||'—'} — rendimiento: ${t.performance||'—'}\n`; });
+  out+=`\nGAPS DETECTADOS\n${'─'.repeat(30)}\n`;
+  (a.gaps||[]).forEach(g=>{ out+=`[${(g.priority||'').toUpperCase()}] ${g.topic}\n  ${g.reason}\n  → ${g.opportunity||''}\n\n`; });
+  out+=`CONTENIDO RECOMENDADO\n${'─'.repeat(30)}\n`;
+  (a.next_content||[]).forEach((n,i)=>{ out+=`${i+1}. ${n.title} (${n.format})\n   ${n.rationale}\n\n`; });
+  out+=`SÍNTESIS IA\n${'─'.repeat(30)}\n${a.insight||'—'}\n`;
+  caDownload(`PR_ContentAudit_${date}.txt`, out, 'text/plain');
+}
+
+function caDownload(filename, content, type){
+  const blob=new Blob([content],{type});
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(blob);
+  a.download=filename;
+  a.click();
+  URL.revokeObjectURL(a.href);
+}
+
 function caRender(d) {
   const { analysis: a, days } = d;
   const s = a.summary || {};

@@ -3,7 +3,52 @@
    Depends on: core.js (CFG, antFetch, setNB)
    ═══════════════════════════════════════════════ */
 
-let CS_AGENT='instagram',CS_CHAT_HISTORY=[],CS_LAST_CONTENT='';
+const CS_STORE = 'pr_content_studio_v1';
+
+function csSave(agent, topic, notes, content) {
+  try {
+    const store = JSON.parse(localStorage.getItem(CS_STORE) || '{}');
+    store[agent] = { topic, notes, content, savedAt: new Date().toISOString() };
+    localStorage.setItem(CS_STORE, JSON.stringify(store));
+  } catch(e) {}
+}
+
+function csLoad(agent) {
+  try {
+    const store = JSON.parse(localStorage.getItem(CS_STORE) || '{}');
+    return store[agent] || null;
+  } catch(e) { return null; }
+}
+
+function csRestoreIfSaved(agent) {
+  const saved = csLoad(agent);
+  if (!saved) return;
+  const outEl = document.getElementById('cs-output');
+  const labelEl = document.getElementById('cs-out-label');
+  const copyBtn = document.getElementById('cs-copy-btn');
+  const topicEl = document.getElementById('cs-topic');
+  const notesEl = document.getElementById('cs-notes');
+  if (topicEl) topicEl.value = saved.topic || '';
+  if (notesEl) notesEl.value = saved.notes || '';
+  outEl.textContent = saved.content;
+  const ago = csSavedAgo(saved.savedAt);
+  labelEl.textContent = `${CS_AGENTS[agent].title.replace('Agente ','')} — guardado ${ago}`;
+  copyBtn.style.display = 'inline-block';
+  document.getElementById('cs-chat-card').style.display = 'block';
+  CS_LAST_CONTENT = saved.content;
+  CS_CHAT_HISTORY = [
+    { role: 'user', content: saved.topic },
+    { role: 'assistant', content: saved.content }
+  ];
+}
+
+function csSavedAgo(isoDate) {
+  const diff = Math.round((Date.now() - new Date(isoDate)) / 60000);
+  if (diff < 1) return 'hace un momento';
+  if (diff < 60) return `hace ${diff}m`;
+  if (diff < 1440) return `hace ${Math.round(diff/60)}h`;
+  return `hace ${Math.round(diff/1440)}d`;
+}
 const CS_AGENTS={
   instagram:{title:'Agente Instagram / TikTok',badge:'Reel · Post',badgeClass:'bg-p',placeholder:'Ej: El 73% de los reclutadores descarta candidatos en los primeros 30 segundos',
     system:`Eres el agente especialista en Instagram y TikTok de Próximo Rol, servicio de coaching de entrevistas para profesionales en España, UK y LATAM.
@@ -55,15 +100,24 @@ KEYWORDS SUGERIDAS: [lista de 8-10 keywords relevantes con match type]`}
 function csTab(agent,el){
   CS_AGENT=agent;
   document.querySelectorAll('.cs-tab').forEach(t=>t.classList.remove('active'));
-  el.classList.add('active');
+  if(el) el.classList.add('active');
   const cfg=CS_AGENTS[agent];
   document.getElementById('cs-agent-title').textContent=cfg.title;
   document.getElementById('cs-agent-badge').textContent=cfg.badge;
   document.getElementById('cs-agent-badge').className='bg '+cfg.badgeClass;
   document.getElementById('cs-topic').placeholder=cfg.placeholder;
-  // Show/hide depth field — not relevant for ads
+  document.getElementById('cs-topic').value='';
+  const notes=document.getElementById('cs-notes');
+  if(notes) notes.value='';
   const depthGroup=document.getElementById('cs-depth-wrap');
   if(depthGroup) depthGroup.style.display = agent==='ads' ? 'none' : 'block';
+  // Reset output
+  document.getElementById('cs-output').innerHTML='<div style="text-align:center;padding:32px;color:var(--ht)"><div style="font-size:28px;margin-bottom:10px">✍️</div><div style="font-size:13px">'+cfg.title.replace('Agente','')+' listo. Escribe tu tema y genera.</div></div>';
+  document.getElementById('cs-copy-btn').style.display='none';
+  document.getElementById('cs-chat-card').style.display='none';
+  CS_CHAT_HISTORY=[];CS_LAST_CONTENT='';
+  // Restore last saved result for this agent
+  csRestoreIfSaved(agent);
 }
 
 function csInitChips(){
@@ -115,9 +169,12 @@ async function csGenerate(){
     outEl.textContent=text;
     labelEl.textContent=cfg.title.replace('Agente ','')+' — listo';
     copyBtn.style.display='inline-block';
+    const exportTxt=document.getElementById('cs-export-txt-btn');
+    if(exportTxt) exportTxt.style.display='inline-block';
     document.getElementById('cs-chat-card').style.display='block';
     document.getElementById('cs-chat-history').innerHTML='';
     setNB('content','live');
+    csSave(CS_AGENT, topic, notes, text);
   }catch(e){
     outEl.innerHTML=`<div style="padding:14px;background:var(--rp);border-radius:var(--r);font-size:12px;color:#991B1B">⚠ ${e.message}</div>`;
   }
@@ -157,5 +214,41 @@ function csCopy(){
     btn.textContent='¡Copiado!';btn.style.background='var(--gp)';btn.style.color='var(--green)';
     setTimeout(()=>{btn.textContent='Copiar';btn.style.background='';btn.style.color='';},2000);
   });
+}
+
+function csExportTxt(){
+  const content=document.getElementById('cs-output').textContent;
+  const topic=(document.getElementById('cs-topic')||{}).value||'contenido';
+  const agent=CS_AGENTS[CS_AGENT]?.title.replace('Agente ','').replace(' / ','-')||CS_AGENT;
+  const date=new Date().toISOString().split('T')[0];
+  const header=`Próximo Rol — ${agent}\nFecha: ${date}\nTema: ${topic}\n${'─'.repeat(50)}\n\n`;
+  csDownload(`PR_${agent}_${date}.txt`, header+content, 'text/plain');
+}
+
+function csExportJson(){
+  const store = JSON.parse(localStorage.getItem(CS_STORE)||'{}');
+  const date=new Date().toISOString().split('T')[0];
+  csDownload(`PR_ContentStudio_${date}.json`, JSON.stringify(store, null, 2), 'application/json');
+}
+
+function csExportAllTxt(){
+  const store = JSON.parse(localStorage.getItem(CS_STORE)||'{}');
+  const date=new Date().toISOString().split('T')[0];
+  let out=`Próximo Rol — Content Studio Export\nFecha: ${date}\n${'═'.repeat(50)}\n\n`;
+  Object.entries(store).forEach(([agent, d])=>{
+    const label=CS_AGENTS[agent]?.title.replace('Agente ','')||agent;
+    const ago=csSavedAgo(d.savedAt);
+    out+=`${label.toUpperCase()} — guardado ${ago}\nTema: ${d.topic||'—'}\n${'─'.repeat(40)}\n${d.content||'—'}\n\n`;
+  });
+  csDownload(`PR_ContentStudio_Todo_${date}.txt`, out, 'text/plain');
+}
+
+function csDownload(filename, content, type){
+  const blob=new Blob([content],{type});
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(blob);
+  a.download=filename;
+  a.click();
+  URL.revokeObjectURL(a.href);
 }
 
