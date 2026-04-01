@@ -128,20 +128,3 @@ function csCopy(){
   });
 }
 
-</script>
-<!-- Date picker popup - fixed position, outside topbar -->
-<div id="date-picker-popup" style="display:none;position:fixed;top:58px;right:16px;background:var(--sf);border:1px solid var(--bd2);border-radius:var(--rl);padding:16px;z-index:9999;box-shadow:0 8px 32px rgba(0,0,0,.18);min-width:290px">
-  <div style="font-size:11px;font-weight:600;color:var(--ht);text-transform:uppercase;letter-spacing:.05em;margin-bottom:10px">Custom date range</div>
-  <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px">
-    <div><label style="font-size:10px;color:var(--ht);display:block;margin-bottom:3px">From</label><input type="date" id="date-from" style="width:100%;padding:6px 8px;border:1px solid var(--bd2);border-radius:var(--r);background:var(--sf2);color:var(--tx);font-size:12px;outline:none"/></div>
-    <div><label style="font-size:10px;color:var(--ht);display:block;margin-bottom:3px">To</label><input type="date" id="date-to" style="width:100%;padding:6px 8px;border:1px solid var(--bd2);border-radius:var(--r);background:var(--sf2);color:var(--tx);font-size:12px;outline:none"/></div>
-  </div>
-  <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px">
-    <button onclick="setQuickRange('ytd')" style="padding:4px 9px;border:1px solid var(--bd2);border-radius:var(--r);font-size:11px;cursor:pointer;background:var(--sf2);color:var(--mt)">YTD</button>
-    <button onclick="setQuickRange('q1')"  style="padding:4px 9px;border:1px solid var(--bd2);border-radius:var(--r);font-size:11px;cursor:pointer;background:var(--sf2);color:var(--mt)">Q1</button>
-    <button onclick="setQuickRange('q2')"  style="padding:4px 9px;border:1px solid var(--bd2);border-radius:var(--r);font-size:11px;cursor:pointer;background:var(--sf2);color:var(--mt)">Q2</button>
-    <button onclick="setQuickRange('last30')" style="padding:4px 9px;border:1px solid var(--bd2);border-radius:var(--r);font-size:11px;cursor:pointer;background:var(--sf2);color:var(--mt)">Last 30d</button>
-    <button onclick="setQuickRange('last90')" style="padding:4px 9px;border:1px solid var(--bd2);border-radius:var(--r);font-size:11px;cursor:pointer;background:var(--sf2);color:var(--mt)">Last 90d</button>
-  </div>
-  <div style="display:flex;gap:6px">
-    <button onclick="applyCustomRange()" style="flex:1;padding:8px;background:var(--green);color:white;border:none;border-radius:var(--r);font-size:12px;font-weight:500;cursor:pointer;font-family:'DM Sans',sans-serif">Apply range</button>
