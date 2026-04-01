@@ -25,12 +25,62 @@ async function caRunScan() {
   const out = document.getElementById('audit-main');
   if (!CFG.ak) { alert('Configura tu Anthropic API Key en ⚙️ Settings primero.'); return; }
 
+  // ── Token estimate & confirmation ──
+  const estimates = {
+    blog:     { tokens: 3000,  model: 'Haiku',  cost: 0.004  },
+    gsc:      { tokens: 0,     model: 'None',   cost: 0      },
+    ga4:      { tokens: 0,     model: 'None',   cost: 0      },
+    linkedin: { tokens: 0,     model: 'None',   cost: 0      },
+    analysis: { tokens: 2000,  model: 'Sonnet', cost: 0.03   },
+  };
+  const totalTokens = Object.values(estimates).reduce((a, b) => a + b.tokens, 0);
+  const totalCost   = Object.values(estimates).reduce((a, b) => a + b.cost, 0);
+
+  if (totalTokens > 2000) {
+    out.innerHTML = `
+      <div style="background:var(--sf);border:1px solid var(--bd2);border-radius:var(--rl);padding:18px;max-width:520px">
+        <div style="font-size:13px;font-weight:500;color:var(--tx);margin-bottom:12px">Estimación de uso antes de continuar</div>
+        <table style="width:100%;font-size:12px;border-collapse:collapse;margin-bottom:14px">
+          <thead><tr>
+            <th style="text-align:left;font-size:10px;font-weight:600;color:var(--ht);text-transform:uppercase;padding-bottom:6px;border-bottom:1px solid var(--bd)">Paso</th>
+            <th style="text-align:right;font-size:10px;font-weight:600;color:var(--ht);text-transform:uppercase;padding-bottom:6px;border-bottom:1px solid var(--bd)">Tokens</th>
+            <th style="text-align:right;font-size:10px;font-weight:600;color:var(--ht);text-transform:uppercase;padding-bottom:6px;border-bottom:1px solid var(--bd)">Modelo</th>
+            <th style="text-align:right;font-size:10px;font-weight:600;color:var(--ht);text-transform:uppercase;padding-bottom:6px;border-bottom:1px solid var(--bd)">Costo</th>
+          </tr></thead>
+          <tbody>
+            <tr><td style="padding:5px 0;border-bottom:1px solid var(--bd);color:var(--mt)">Escanear blog</td><td style="text-align:right;padding:5px 0;border-bottom:1px solid var(--bd);color:var(--mt)">~3,000</td><td style="text-align:right;padding:5px 0;border-bottom:1px solid var(--bd);color:var(--mt)">Haiku</td><td style="text-align:right;padding:5px 0;border-bottom:1px solid var(--bd);color:var(--mt)">~$0.004</td></tr>
+            <tr><td style="padding:5px 0;border-bottom:1px solid var(--bd);color:var(--mt)">Search Console + GA4</td><td style="text-align:right;padding:5px 0;border-bottom:1px solid var(--bd);color:var(--mt)">0</td><td style="text-align:right;padding:5px 0;border-bottom:1px solid var(--bd);color:var(--mt)">API directa</td><td style="text-align:right;padding:5px 0;border-bottom:1px solid var(--bd);color:var(--mt)">$0</td></tr>
+            <tr><td style="padding:5px 0;color:var(--mt)">Análisis + gaps IA</td><td style="text-align:right;padding:5px 0;color:var(--mt)">~2,000</td><td style="text-align:right;padding:5px 0;color:var(--mt)">Sonnet</td><td style="text-align:right;padding:5px 0;color:var(--mt)">~$0.030</td></tr>
+          </tbody>
+          <tfoot><tr>
+            <td style="padding-top:8px;font-weight:500;color:var(--tx);border-top:1px solid var(--bd)">Total estimado</td>
+            <td style="text-align:right;padding-top:8px;font-weight:500;color:var(--tx);border-top:1px solid var(--bd)">~5,000</td>
+            <td style="text-align:right;padding-top:8px;border-top:1px solid var(--bd)"></td>
+            <td style="text-align:right;padding-top:8px;font-weight:500;color:var(--green);border-top:1px solid var(--bd)">~$0.034</td>
+          </tfoot>
+        </table>
+        <div style="font-size:11px;color:var(--ht);margin-bottom:14px">Este escaneo usará web search + IA. El costo real puede variar ±50% según la cantidad de contenido encontrado.</div>
+        <div style="display:flex;gap:8px">
+          <button onclick="caConfirmedScan()" style="padding:8px 18px;background:var(--green);color:white;border:none;border-radius:var(--r);font-size:12px;font-weight:500;cursor:pointer;font-family:'DM Sans',sans-serif">Continuar</button>
+          <button onclick="document.getElementById('audit-main').innerHTML='<div class=\\'notice\\'><strong>Escaneo cancelado</strong></div>'" style="padding:8px 14px;border:1px solid var(--bd2);border-radius:var(--r);font-size:12px;cursor:pointer;background:var(--sf2);color:var(--mt);font-family:'DM Sans',sans-serif">Cancelar</button>
+        </div>
+      </div>`;
+    return;
+  }
+
+  await caConfirmedScan();
+}
+
+async function caConfirmedScan() {
+  const btn = document.getElementById('ca-scan-btn');
+  const out = document.getElementById('audit-main');
+
   btn.disabled = true;
   btn.innerHTML = `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="animation:spin .8s linear infinite"><path d="M21 12a9 9 0 11-6-8.5"/></svg> Escaneando…`;
 
   out.innerHTML = `
     <div style="display:flex;flex-direction:column;gap:10px;padding:20px 0">
-      <div class="ld"><div class="sp2"></div><span id="ca-status">Leyendo blog de Próximo Rol…</span></div>
+      <div class="ld"><div class="sp2"></div><span id="ca-status">Iniciando escaneo…</span></div>
     </div>`;
 
   const setStatus = t => { const el = document.getElementById('ca-status'); if (el) el.textContent = t; };
@@ -42,23 +92,22 @@ async function caRunScan() {
     const sd = startDate.toISOString().split('T')[0];
     const ed = endDate.toISOString().split('T')[0];
 
-    // ── 1. Blog scan via Claude web search ──
     setStatus('Leyendo blog de Próximo Rol…');
     const blogData = await caScanBlog(sd, ed);
+    await new Promise(r => setTimeout(r, 2000));
 
-    // ── 2. LinkedIn posts ──
-    setStatus('Leyendo posts de LinkedIn…');
-    const liData = await caGetLinkedInPosts();
-
-    // ── 3. Search Console top queries ──
     setStatus('Leyendo Search Console…');
     const gscData = await caGetGSCData(sd, ed);
+    await new Promise(r => setTimeout(r, 1000));
 
-    // ── 4. GA4 top pages ──
     setStatus('Leyendo GA4…');
     const ga4Data = await caGetGA4Pages(sd, ed);
+    await new Promise(r => setTimeout(r, 1000));
 
-    // ── 5. Classify + analyse with Claude ──
+    setStatus('Leyendo posts de LinkedIn…');
+    const liData = await caGetLinkedInPosts();
+    await new Promise(r => setTimeout(r, 2000));
+
     setStatus('Analizando y clasificando contenido con IA…');
     const analysis = await caAnalyse(blogData, liData, gscData, ga4Data);
 
@@ -79,27 +128,14 @@ async function caScanBlog(sd, ed) {
   const domain = blogUrl.replace(/\/$/, '');
 
   const data = await antFetch({
-    model: 'claude-sonnet-4-20250514',
-    max_tokens: 1200,
+    model: 'claude-haiku-4-5-20251001',
+    max_tokens: 800,
     tools: [{ type: 'web_search_20250305', name: 'web_search' }],
-    system: `You are a content analyst. Search for blog posts and articles from the given website published in the given date range. Return ONLY valid JSON, no markdown.`,
+    system: `Content analyst. Search for blog posts from the given site. Return ONLY valid JSON, no markdown.`,
     messages: [{
       role: 'user',
-      content: `Search for all blog posts and articles published on ${domain} between ${sd} and ${ed}.
-
-Return ONLY this JSON structure (no markdown, no preamble):
-{
-  "posts": [
-    {
-      "title": "...",
-      "url": "...",
-      "date": "YYYY-MM-DD or approximate",
-      "summary": "1-2 sentence summary",
-      "topics": ["topic1", "topic2"]
-    }
-  ],
-  "total_found": 0
-}`
+      content: `Find blog posts on ${domain} from ${sd} to ${ed}. Return JSON only:
+{"posts":[{"title":"...","date":"YYYY-MM-DD","topics":["topic1"]}],"total_found":0}`
     }]
   });
 
@@ -187,55 +223,24 @@ async function caGetGA4Pages(sd, ed) {
 
 /* ── AI Analysis ── */
 async function caAnalyse(blogData, liData, gscData, ga4Data) {
-  const blogPosts = (blogData.posts || []).map(p => `- "${p.title}" (${p.date}) — Temas: ${(p.topics || []).join(', ')}`).join('\n') || 'No se encontraron posts de blog.';
-  const liPosts = (liData.posts || []).slice(0, 15).map(p => `- "${(p.text || p.title || '').slice(0, 100)}"`).join('\n') || 'No hay datos de LinkedIn.';
-  const gscQueries = (gscData.queries || []).slice(0, 15).map(q => `- "${q.query}" (${q.clicks} clicks, pos. ${q.position ? q.position.toFixed(1) : '?'})`).join('\n') || 'No hay datos de Search Console.';
-  const ga4Pages = (ga4Data.pages || []).slice(0, 10).map(p => `- ${p.path} — ${p.sessions} sesiones, ${Math.round(p.avgDuration)}s promedio`).join('\n') || 'No hay datos de GA4.';
+  const blogPosts = (blogData.posts || []).slice(0, 10).map(p => `"${p.title}" (${p.date}) [${(p.topics||[]).join(',')}]`).join('\n') || 'None';
+  const liPosts = (liData.posts || []).slice(0, 8).map(p => `"${(p.text||p.title||'').slice(0,80)}"`).join('\n') || 'None';
+  const gscQ = (gscData.queries || []).slice(0, 10).map(q => `"${q.query}" ${q.clicks}clicks pos${q.position?q.position.toFixed(1):'?'}`).join('\n') || 'None';
+  const ga4P = (ga4Data.pages || []).slice(0, 8).map(p => `${p.path} ${p.sessions}sessions`).join('\n') || 'None';
 
-  const prompt = `Eres un estratega de contenido especializado en marketing digital para Próximo Rol, un servicio de coaching de entrevistas para profesionales en España, UK y LATAM.
+  const prompt = `Content strategist for Próximo Rol (interview coaching, Spain/UK/LATAM). Analyze ${CA_DAYS} days of content.
 
-Analiza los siguientes datos de contenido de los últimos ${CA_DAYS} días:
+BLOG:\n${blogPosts}
+LINKEDIN:\n${liPosts}
+TOP SEARCHES:\n${gscQ}
+TOP PAGES:\n${ga4P}
 
-BLOG POSTS PUBLICADOS:
-${blogPosts}
-
-POSTS DE LINKEDIN:
-${liPosts}
-
-TOP KEYWORDS EN SEARCH CONSOLE:
-${gscQueries}
-
-PÁGINAS MÁS VISITADAS EN GA4:
-${ga4Pages}
-
-Genera un análisis completo en JSON con este formato exacto (sin markdown):
-{
-  "summary": {
-    "total_pieces": 0,
-    "blog_count": 0,
-    "linkedin_count": 0,
-    "top_topic": "...",
-    "top_topic_count": 0,
-    "coverage_score": "X de Y temas cubiertos"
-  },
-  "topics": [
-    {"name": "...", "count": 0, "channels": ["blog", "linkedin"], "performance": "high|medium|low"}
-  ],
-  "gaps": [
-    {"topic": "...", "reason": "...", "priority": "high|medium|low", "opportunity": "..."}
-  ],
-  "top_performing": [
-    {"title": "...", "channel": "blog|linkedin|gsc", "metric": "...", "value": "..."}
-  ],
-  "insight": "Párrafo de 2-3 frases con la síntesis más importante y la recomendación principal para los próximos 30 días.",
-  "next_content": [
-    {"title": "...", "format": "blog|linkedin|ambos", "rationale": "..."}
-  ]
-}`;
+Return ONLY JSON (no markdown):
+{"summary":{"total_pieces":0,"blog_count":0,"linkedin_count":0,"top_topic":"","top_topic_count":0,"coverage_score":"X of Y topics"},"topics":[{"name":"","count":0,"channels":["blog"],"performance":"high"}],"gaps":[{"topic":"","reason":"","priority":"high","opportunity":""}],"top_performing":[{"title":"","channel":"blog","metric":"","value":""}],"insight":"2-3 sentence synthesis and top recommendation.","next_content":[{"title":"","format":"blog","rationale":""}]}`;
 
   const data = await antFetch({
     model: 'claude-sonnet-4-20250514',
-    max_tokens: 1500,
+    max_tokens: 1000,
     messages: [{ role: 'user', content: prompt }]
   });
 
