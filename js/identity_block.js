@@ -121,76 +121,83 @@ function renderIdentityTab() {
   const el = document.getElementById('cs-identity-panel');
   if (!el) return;
 
+  // Helper: escape HTML attribute values
+  const esc = v => String(v||'').replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+
+  const arcRows = [1,2,3].map(n => {
+    const key = d[`arc${n}`] || '';
+    const pct = d[`arc${n}_pct`] || (n===1?45:n===2?35:20);
+    const opts = Object.entries(BI_ARCHETYPES).map(([k,a]) =>
+      `<option value="${esc(k)}" ${key===k?'selected':''}>${a.icon} ${a.label}</option>`
+    ).join('');
+    const desc = key && BI_ARCHETYPES[key] ? esc(BI_ARCHETYPES[key].desc) : '';
+    return `<div class="bi-arc-row">
+      <div style="display:flex;gap:8px;align-items:center;margin-bottom:6px">
+        <span style="font-size:11px;font-weight:600;color:var(--ht);width:24px">A${n}</span>
+        <select class="fi bi-arc-select" id="bi-arc${n}" onchange="biUpdateArcRow(${n})" style="flex:1;font-family:'DM Sans',sans-serif;cursor:pointer">
+          <option value="">— Sin arquetipo —</option>${opts}
+        </select>
+        <div style="display:flex;align-items:center;gap:5px">
+          <input type="number" class="fi" id="bi-arc${n}-pct" value="${pct}" min="0" max="100" step="5" oninput="biValidatePct()" style="width:60px;text-align:center;font-family:'DM Mono',monospace">
+          <span style="font-size:11px;color:var(--ht)">%</span>
+        </div>
+      </div>
+      <div id="bi-arc${n}-desc" style="font-size:11px;color:var(--mt);margin-left:32px;font-style:italic;line-height:1.5">${desc}</div>
+    </div>`;
+  }).join('');
+
+  // Build safe scaffold — textareas and inputs set via JS after render
   el.innerHTML = `
-    <div class="cd" style="max-width:680px">
+    <div class="cd" style="max-width:720px">
       <div class="ch"><span class="ct">Identidad de marca</span><span class="bg bg-p">Usada por todos los agentes</span></div>
       <div style="padding:4px 0">
-        <div style="font-size:12px;color:var(--mt);margin-bottom:16px;line-height:1.6">
-          Rellena esto una vez. Todos los agentes lo leen antes de generar. Si cambias de empresa, cambias estos valores y toda la voz cambia.
-        </div>
+        <div style="font-size:12px;color:var(--mt);margin-bottom:16px;line-height:1.6">Rellena esto una vez. Todos los agentes lo leen antes de generar. Si cambias de empresa, cambias estos valores y toda la voz cambia.</div>
 
         <div class="bi-section">
           <div class="bi-section-title">Datos básicos</div>
-          <div class="bi-row"><label class="bi-label">Empresa</label><input class="fi bi-input" id="bi-empresa" value="${d.empresa}"></div>
-          <div class="bi-row"><label class="bi-label">Servicio principal</label><input class="fi bi-input" id="bi-servicio" value="${d.servicio}"></div>
-          <div class="bi-row"><label class="bi-label">Mercados</label><input class="fi bi-input" id="bi-mercados" value="${d.mercados}"></div>
-          <div class="bi-row"><label class="bi-label">Servicios (detalle)</label><input class="fi bi-input" id="bi-servicios" value="${d.servicios_detalle}"></div>
-          <div class="bi-row"><label class="bi-label">CTA principal</label><input class="fi bi-input" id="bi-cta" value="${d.cta_principal}"></div>
+          <div class="bi-row"><label class="bi-label">Empresa</label><input class="fi bi-input" id="bi-empresa"></div>
+          <div class="bi-row"><label class="bi-label">Servicio principal</label><input class="fi bi-input" id="bi-servicio"></div>
+          <div class="bi-row"><label class="bi-label">Mercados</label><input class="fi bi-input" id="bi-mercados"></div>
+          <div class="bi-row"><label class="bi-label">Servicios (detalle)</label><input class="fi bi-input" id="bi-servicios"></div>
+          <div class="bi-row"><label class="bi-label">CTA principal</label><input class="fi bi-input" id="bi-cta"></div>
         </div>
 
         <div class="bi-section">
           <div class="bi-section-title">Arquetipos de marca — máx. 3, deben sumar 100%</div>
           <div style="font-size:11px;color:var(--ht);margin-bottom:12px">El % define cuánto peso tiene cada arquetipo en el tono generado.</div>
-          ${[1,2,3].map(n => {
-            const key = d[`arc${n}`] || '';
-            const pct = d[`arc${n}_pct`] || (n===1?45:n===2?35:20);
-            return `<div class="bi-arc-row">
-              <div style="display:flex;gap:8px;align-items:center;margin-bottom:6px">
-                <span style="font-size:11px;font-weight:600;color:var(--ht);width:24px">A${n}</span>
-                <select class="fi bi-arc-select" id="bi-arc${n}" onchange="biUpdateArcRow(${n})" style="flex:1;font-family:'DM Sans',sans-serif;cursor:pointer">
-                  <option value="">— Sin arquetipo —</option>
-                  ${Object.entries(BI_ARCHETYPES).map(([k,a]) => `<option value="${k}" ${key===k?'selected':''}>${a.icon} ${a.label}</option>`).join('')}
-                </select>
-                <div style="display:flex;align-items:center;gap:5px">
-                  <input type="number" class="fi" id="bi-arc${n}-pct" value="${pct}" min="0" max="100" step="5" oninput="biValidatePct()" style="width:60px;text-align:center;font-family:'DM Mono',monospace">
-                  <span style="font-size:11px;color:var(--ht)">%</span>
-                </div>
-              </div>
-              <div id="bi-arc${n}-desc" style="font-size:11px;color:var(--mt);margin-left:32px;font-style:italic;line-height:1.5">${key && BI_ARCHETYPES[key] ? BI_ARCHETYPES[key].desc : ''}</div>
-            </div>`;
-          }).join('')}
+          ${arcRows}
           <div id="bi-pct-warning" style="font-size:11px;color:var(--red);display:none;margin-top:6px">⚠ Los porcentajes deben sumar exactamente 100%</div>
           <div style="font-size:11px;color:var(--mt);margin-top:4px">Total: <span id="bi-pct-sum" style="font-weight:500">100</span>%</div>
         </div>
 
         <div class="bi-section">
           <div class="bi-section-title">Cliente ideal</div>
-          <div class="bi-row"><label class="bi-label">Perfil</label><textarea class="fi bi-textarea" id="bi-perfil">${d.audiencia_perfil}</textarea></div>
-          <div class="bi-row"><label class="bi-label">Momento emocional <span class="bi-hint">(qué siente justo antes de contactarte)</span></label><textarea class="fi bi-textarea" id="bi-momento">${d.audiencia_momento}</textarea></div>
-          <div class="bi-row"><label class="bi-label">Qué desea en el fondo</label><textarea class="fi bi-textarea" id="bi-deseo">${d.audiencia_deseo}</textarea></div>
+          <div class="bi-row"><label class="bi-label">Perfil</label><textarea class="fi bi-textarea" id="bi-perfil"></textarea></div>
+          <div class="bi-row"><label class="bi-label">Momento emocional <span class="bi-hint">(qué siente justo antes de contactarte)</span></label><textarea class="fi bi-textarea" id="bi-momento"></textarea></div>
+          <div class="bi-row"><label class="bi-label">Qué desea en el fondo</label><textarea class="fi bi-textarea" id="bi-deseo"></textarea></div>
         </div>
 
         <div class="bi-section">
           <div class="bi-section-title">Propuesta de valor</div>
-          <div class="bi-row"><label class="bi-label">USP 1</label><input class="fi bi-input" id="bi-usp1" value="${d.usp1}"></div>
-          <div class="bi-row"><label class="bi-label">USP 2</label><input class="fi bi-input" id="bi-usp2" value="${d.usp2}"></div>
-          <div class="bi-row"><label class="bi-label">USP 3</label><input class="fi bi-input" id="bi-usp3" value="${d.usp3}"></div>
-          <div class="bi-row"><label class="bi-label">Diferenciador vs competencia</label><textarea class="fi bi-textarea" id="bi-diferenciador">${d.diferenciador}</textarea></div>
+          <div class="bi-row"><label class="bi-label">USP 1</label><input class="fi bi-input" id="bi-usp1"></div>
+          <div class="bi-row"><label class="bi-label">USP 2</label><input class="fi bi-input" id="bi-usp2"></div>
+          <div class="bi-row"><label class="bi-label">USP 3</label><input class="fi bi-input" id="bi-usp3"></div>
+          <div class="bi-row"><label class="bi-label">Diferenciador vs competencia</label><textarea class="fi bi-textarea" id="bi-diferenciador"></textarea></div>
         </div>
 
         <div class="bi-section">
           <div class="bi-section-title">Qué NUNCA publicaría esta marca</div>
-          <div class="bi-row"><textarea class="fi bi-textarea" id="bi-no-hacer" style="min-height:80px">${d.no_hacer}</textarea></div>
+          <div class="bi-row"><textarea class="fi bi-textarea" id="bi-no-hacer" style="min-height:80px"></textarea></div>
         </div>
 
         <div class="bi-section">
           <div class="bi-section-title">Notas de voz</div>
-          <div class="bi-row"><textarea class="fi bi-textarea" id="bi-voz">${d.voz_notas}</textarea></div>
+          <div class="bi-row"><textarea class="fi bi-textarea" id="bi-voz"></textarea></div>
         </div>
 
         <div class="bi-section">
-          <div class="bi-section-title">Ejemplos de voz real de la marca <span class="bi-hint">(opcional — los agentes aprenden de estos)</span></div>
-          <div class="bi-row"><textarea class="fi bi-textarea" id="bi-ejemplo" style="min-height:120px" placeholder="Pega frases, párrafos o posts que representen bien la voz de la marca.">${d.ejemplo_contenido}</textarea></div>
+          <div class="bi-section-title">Ejemplos de voz real <span class="bi-hint">(opcional — los agentes aprenden de estos)</span></div>
+          <div class="bi-row"><textarea class="fi bi-textarea" id="bi-ejemplo" style="min-height:120px" placeholder="Pega frases, párrafos o posts que representen bien la voz de la marca."></textarea></div>
         </div>
 
         <div style="display:flex;gap:8px;margin-top:8px">
@@ -200,6 +207,24 @@ function renderIdentityTab() {
         <div id="bi-save-msg" style="display:none;font-size:12px;color:var(--green);margin-top:8px;text-align:center">✓ Identidad guardada — todos los agentes la usarán en la próxima generación</div>
       </div>
     </div>`;
+
+  // Set values safely via JS (avoids HTML injection issues with quotes etc.)
+  const setVal = (id, val) => { const el2 = document.getElementById(id); if (el2) el2.value = val || ''; };
+  setVal('bi-empresa', d.empresa);
+  setVal('bi-servicio', d.servicio);
+  setVal('bi-mercados', d.mercados);
+  setVal('bi-servicios', d.servicios_detalle);
+  setVal('bi-cta', d.cta_principal);
+  setVal('bi-perfil', d.audiencia_perfil);
+  setVal('bi-momento', d.audiencia_momento);
+  setVal('bi-deseo', d.audiencia_deseo);
+  setVal('bi-usp1', d.usp1);
+  setVal('bi-usp2', d.usp2);
+  setVal('bi-usp3', d.usp3);
+  setVal('bi-diferenciador', d.diferenciador);
+  setVal('bi-no-hacer', d.no_hacer);
+  setVal('bi-voz', d.voz_notas);
+  setVal('bi-ejemplo', d.ejemplo_contenido);
 }
 
 function biUpdateArcRow(n) {
