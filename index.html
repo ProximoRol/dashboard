@@ -997,13 +997,15 @@
 </div>
 
 <!-- Dashboard modules -->
-<script src="js/core.js"></script>
-<script src="js/analytics.js"></script>
-<script src="js/social.js"></script>
-<script src="js/pipeline.js"></script>
-<script src="js/budget.js"></script>
-<script src="js/intelligence.js"></script>
-<script src="js/content.js"></script>
-<script>init();</script>
+<script src="js/core.js" defer></script>
+<script src="js/analytics.js" defer></script>
+<script src="js/social.js" defer></script>
+<script src="js/pipeline.js" defer></script>
+<script src="js/budget.js" defer></script>
+<script src="js/intelligence.js" defer></script>
+<script src="js/content.js" defer></script>
+<script defer>
+  document.addEventListener('DOMContentLoaded', () => init());
+</script>
 </body>
 </html>
