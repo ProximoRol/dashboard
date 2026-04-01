@@ -5,24 +5,10 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Próximo Rol — Marketing Dashboard</title>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
-
-<!-- External libraries -->
 <script src="https://accounts.google.com/gsi/client" async defer></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
-
-<!-- Dashboard styles -->
 <link rel="stylesheet" href="css/styles.css">
-</head>
-<body>
-.rm-step{display:flex;gap:8px;font-size:12px;color:var(--tx);line-height:1.5}
-.rm-step-num{width:20px;height:20px;border-radius:50%;background:var(--gp);color:var(--green);font-size:10px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:1px}
-.rm-kpis{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:4px}
-.rm-kpi{background:var(--sf2);border-radius:var(--r);padding:10px 12px;text-align:center}
-.rm-kpi-v{font-size:16px;font-weight:700;color:var(--green)}
-.rm-kpi-l{font-size:11px;color:var(--mt);margin-top:2px}
-
-</style>
 </head>
 <body>
 
@@ -990,7 +976,27 @@
 </div>
 
 
-<!-- Dashboard modules — load order matters -->
+<!-- Date picker popup -->
+<div id="date-picker-popup" style="display:none;position:fixed;top:58px;right:16px;background:var(--sf);border:1px solid var(--bd2);border-radius:var(--rl);padding:16px;z-index:9999;box-shadow:0 8px 32px rgba(0,0,0,.18);min-width:290px">
+  <div style="font-size:11px;font-weight:600;color:var(--ht);text-transform:uppercase;letter-spacing:.05em;margin-bottom:10px">Custom date range</div>
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px">
+    <div><label style="font-size:10px;color:var(--ht);display:block;margin-bottom:3px">From</label><input type="date" id="date-from" style="width:100%;padding:6px 8px;border:1px solid var(--bd2);border-radius:var(--r);background:var(--sf2);color:var(--tx);font-size:12px;outline:none"/></div>
+    <div><label style="font-size:10px;color:var(--ht);display:block;margin-bottom:3px">To</label><input type="date" id="date-to" style="width:100%;padding:6px 8px;border:1px solid var(--bd2);border-radius:var(--r);background:var(--sf2);color:var(--tx);font-size:12px;outline:none"/></div>
+  </div>
+  <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px">
+    <button onclick="setQuickRange('ytd')" style="padding:4px 9px;border:1px solid var(--bd2);border-radius:var(--r);font-size:11px;cursor:pointer;background:var(--sf2);color:var(--mt)">YTD</button>
+    <button onclick="setQuickRange('q1')"  style="padding:4px 9px;border:1px solid var(--bd2);border-radius:var(--r);font-size:11px;cursor:pointer;background:var(--sf2);color:var(--mt)">Q1</button>
+    <button onclick="setQuickRange('q2')"  style="padding:4px 9px;border:1px solid var(--bd2);border-radius:var(--r);font-size:11px;cursor:pointer;background:var(--sf2);color:var(--mt)">Q2</button>
+    <button onclick="setQuickRange('last30')" style="padding:4px 9px;border:1px solid var(--bd2);border-radius:var(--r);font-size:11px;cursor:pointer;background:var(--sf2);color:var(--mt)">Last 30d</button>
+    <button onclick="setQuickRange('last90')" style="padding:4px 9px;border:1px solid var(--bd2);border-radius:var(--r);font-size:11px;cursor:pointer;background:var(--sf2);color:var(--mt)">Last 90d</button>
+  </div>
+  <div style="display:flex;gap:6px">
+    <button onclick="applyCustomRange()" style="flex:1;padding:8px;background:var(--green);color:white;border:none;border-radius:var(--r);font-size:12px;font-weight:500;cursor:pointer;font-family:'DM Sans',sans-serif">Apply range</button>
+    <button onclick="hideDatePicker()" style="padding:8px 12px;border:1px solid var(--bd2);border-radius:var(--r);font-size:12px;cursor:pointer;background:var(--sf2);color:var(--mt);font-family:'DM Sans',sans-serif">Cancel</button>
+  </div>
+</div>
+
+<!-- Dashboard modules -->
 <script src="js/core.js"></script>
 <script src="js/analytics.js"></script>
 <script src="js/social.js"></script>
@@ -998,11 +1004,6 @@
 <script src="js/budget.js"></script>
 <script src="js/intelligence.js"></script>
 <script src="js/content.js"></script>
-
-<script>
-  // Boot — runs after all modules are loaded
-  init();
-</script>
-
+<script>init();</script>
 </body>
 </html>
