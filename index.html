@@ -908,13 +908,17 @@
 
 <div class="page" id="page-content">
   <div class="sh"><span class="sl">Content Studio</span><div class="sln"></div></div>
-  <div style="display:flex;gap:6px;margin-bottom:16px;flex-wrap:wrap" id="cs-tabs">
+  <div style="display:flex;gap:6px;margin-bottom:16px;flex-wrap:wrap;align-items:center" id="cs-tabs">
     <button class="cs-tab active" data-agent="instagram" onclick="csTab('instagram',this)">📱 Instagram / TikTok</button>
     <button class="cs-tab" data-agent="linkedin" onclick="csTab('linkedin',this)">💼 LinkedIn</button>
     <button class="cs-tab" data-agent="newsletter" onclick="csTab('newsletter',this)">📧 Newsletter</button>
     <button class="cs-tab" data-agent="youtube" onclick="csTab('youtube',this)">🎬 YouTube</button>
     <button class="cs-tab" data-agent="ads" onclick="csTab('ads',this)">📢 Google Ads</button>
+    <div style="flex:1"></div>
+    <button class="cs-tab" id="cs-identity-tab-btn" onclick="csShowIdentity()" style="border-style:dashed;border-color:var(--purple)">🎨 Identidad de marca</button>
   </div>
+  <div id="cs-identity-panel" style="display:none"></div>
+  <div id="cs-main-form">
   <div class="g2" style="align-items:start">
     <div>
       <div class="cd">
@@ -983,6 +987,7 @@
       </div>
     </div>
   </div>
+  </div><!-- end cs-main-form -->
 </div>
 
 <div class="page" id="page-settings">
@@ -1039,6 +1044,7 @@
 <script src="js/pipeline.js"></script>
 <script src="js/budget.js"></script>
 <script src="js/intelligence.js"></script>
+<script src="js/identity_block.js"></script>
 <script src="js/content.js"></script>
 <script src="js/audit.js"></script>
 <script>init();</script>
