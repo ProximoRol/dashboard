@@ -1006,4 +1006,26 @@
   <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px">
     <button onclick="setQuickRange('ytd')" style="padding:4px 9px;border:1px solid var(--bd2);border-radius:var(--r);font-size:11px;cursor:pointer;background:var(--sf2);color:var(--mt)">YTD</button>
     <button onclick="setQuickRange('q1')"  style="padding:4px 9px;border:1px solid var(--bd2);border-radius:var(--r);font-size:11px;cursor:pointer;background:var(--sf2);color:var(--mt)">Q1</button>
-    <button onclick="setQuickRange('q2')"  style="padding:4px 9px;border:1px solid var(--
+    <button onclick="setQuickRange('q2')"  style="padding:4px 9px;border:1px solid var(--bd2);border-radius:var(--r);font-size:11px;cursor:pointer;background:var(--sf2);color:var(--mt)">Q2</button>
+    <button onclick="setQuickRange('last30')" style="padding:4px 9px;border:1px solid var(--bd2);border-radius:var(--r);font-size:11px;cursor:pointer;background:var(--sf2);color:var(--mt)">Last 30d</button>
+    <button onclick="setQuickRange('last90')" style="padding:4px 9px;border:1px solid var(--bd2);border-radius:var(--r);font-size:11px;cursor:pointer;background:var(--sf2);color:var(--mt)">Last 90d</button>
+  </div>
+  <div style="display:flex;gap:6px">
+    <button onclick="applyCustomRange()" style="flex:1;padding:8px;background:var(--green);color:white;border:none;border-radius:var(--r);font-size:12px;font-weight:500;cursor:pointer;font-family:'DM Sans',sans-serif">Apply range</button>
+    <button onclick="hideDatePicker()" style="padding:8px 12px;border:1px solid var(--bd2);border-radius:var(--r);font-size:12px;cursor:pointer;background:var(--sf2);color:var(--mt);font-family:'DM Sans',sans-serif">Cancel</button>
+  </div>
+</div>
+
+<!-- Dashboard modules -->
+<!-- Dashboard modules — loaded in order at bottom of body -->
+<script src="js/core.js"></script>
+<script src="js/analytics.js"></script>
+<script src="js/social.js"></script>
+<script src="js/pipeline.js"></script>
+<script src="js/budget.js"></script>
+<script src="js/intelligence.js"></script>
+<script src="js/content.js"></script>
+<script src="js/audit.js"></script>
+<script>init();</script>
+</body>
+</html>
