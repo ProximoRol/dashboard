@@ -43,7 +43,7 @@ const CK='eco_v3';
 const COLORS=['#1D9E75','#2563EB','#D97706','#DC2626','#7C3AED','#0891B2','#059669','#BE185D'];
 const TC='#A8A8AC',GC='rgba(0,0,0,0.05)';
 const MONTHS=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
-const TITLES={ov:'Overview',report:'Monthly Report',ga4:'Google Analytics 4',gsc:'Search Console',ads:'Google Ads',kwi:'Keyword Intelligence',seo:'SEO Intelligence',li:'LinkedIn',inst:'Instantly',opps:'Opportunities Pipeline',mon:'Monday.com',budget:'Budget & Costs',settings:'Settings',content:'Content Studio'};
+const TITLES={ov:'Overview',report:'Monthly Report',ga4:'Google Analytics 4',gsc:'Search Console',ads:'Google Ads',kwi:'Keyword Intelligence',seo:'SEO Intelligence',li:'LinkedIn',inst:'Instantly',opps:'Opportunities Pipeline',mon:'Monday.com',budget:'Budget & Costs',settings:'Settings',content:'Content Studio',audit:'Content Audit'};
 let CFG={},TOKEN=null;
 const CH={};
 
@@ -166,6 +166,8 @@ function showP(id,el){
       } else if(id==='content'){
         setNB('content','live');
         csInitChips();
+      } else if(id==='audit'){
+        renderAuditPage();
       } else if(id==='opps' && _OPP_DATA.length>0){
         renderOppCharts();
       }
