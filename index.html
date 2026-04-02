@@ -131,6 +131,7 @@
       <div class="ns" style="margin-top:6px">CRM & Pipeline</div>
       <div class="ni" onclick="showP('opps',this)"><div class="nico">🎯</div>Opportunities<span class="nb nb-off" id="nb-opps">—</span></div>
       <div class="ni" onclick="showP('mon',this)"><div class="nico">🏢</div>CRM<span class="nb nb-off" id="nb-mon">—</span></div>
+      <div class="ni" onclick="showP('prosp',this)"><div class="nico">🎓</div>Prospecting<span class="nb nb-pend" id="nb-prosp">B2B</span></div>
       <div class="ns" style="margin-top:6px">Planning</div>
       <div class="ni" onclick="showP('budget',this)"><div class="nico">💰</div>Budget & Costs</div>
       <div class="ns" style="margin-top:6px">Content & IA</div>
@@ -998,6 +999,11 @@
   </div><!-- end cs-main-form -->
 </div>
 
+<div class="page" id="page-prosp">
+  <div class="sh"><span class="sl">Prospecting — Alianzas universitarias</span><div class="sln"></div></div>
+  <div id="prosp-main"></div>
+</div>
+
 <div class="page" id="page-guide">
   <div class="sh"><span class="sl">Guía del dashboard</span><div class="sln"></div></div>
   <div id="guide-main"></div>
@@ -1051,6 +1057,7 @@
 
 <!-- Dashboard modules -->
 <!-- Dashboard modules — loaded in order at bottom of body -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script src="js/core.js"></script>
 <script src="js/analytics.js"></script>
 <script src="js/social.js"></script>
@@ -1060,6 +1067,7 @@
 <script src="js/identity_block.js"></script>
 <script src="js/content.js"></script>
 <script src="js/audit.js"></script>
+<script src="js/prospecting.js"></script>
 <script src="js/guide.js"></script>
 <script>init();</script>
 </body>
