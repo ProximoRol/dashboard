@@ -3,6 +3,8 @@
    Depends on: core.js
    ═══════════════════════════════════════════════ */
 
+const BK = 'eco_budget_v1'; // localStorage key for budget/report data
+
 /* ── BUDGET EXCEL ── */
 const VENDOR_MAP = {
   'google ads': 'paid_media', 'meta ads': 'paid_media', 'facebook ads': 'paid_media', 'linkedin ads': 'li_ads',

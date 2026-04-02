@@ -3,201 +3,136 @@
    ═══════════════════════════════════════════════ */
 
 function renderGuidePage() {
-  const el = document.getElementById('guide-main');
+  var el = document.getElementById('guide-main');
   if (!el) return;
 
-  // Safe config access — works even before login completes
-  const cfg = (typeof CFG !== 'undefined') ? CFG : {};
-  const hasToken = !!(typeof TOKEN !== 'undefined' && TOKEN);
+  try {
+    var cfg = (typeof CFG !== 'undefined') ? CFG : {};
+    var hasToken = !!(typeof TOKEN !== 'undefined' && TOKEN);
+    var conn = {
+      ga4:  !!(cfg.clientId && cfg.ga4 && hasToken),
+      gsc:  !!(cfg.gsc && hasToken),
+      ads:  !!(cfg.ads && hasToken),
+      li:   !!(cfg.liId || cfg.liToken),
+      crm:  !!(cfg.monday || cfg.hubspot),
+      mail: !!(cfg.instantly),
+    };
+    var connCount = Object.values(conn).filter(Boolean).length;
 
-  const conn = {
-    ga4:  !!(cfg.clientId && cfg.ga4 && hasToken),
-    gsc:  !!(cfg.gsc && hasToken),
-    ads:  !!(cfg.ads && hasToken),
-    li:   !!(cfg.liId || cfg.liToken),
-    crm:  !!(cfg.monday || cfg.hubspot),
-    mail: !!(cfg.instantly),
-  };
+    function dot(ok) {
+      return '<span style="display:inline-block;width:7px;height:7px;border-radius:50%;background:' + (ok?'var(--green)':'#DC2626') + ';flex-shrink:0"></span>';
+    }
 
-  const dot = (ok, pending) => {
-    if (pending) return `<span style="display:inline-block;width:7px;height:7px;border-radius:50%;background:var(--ht);flex-shrink:0;margin-top:5px"></span>`;
-    return `<span style="display:inline-block;width:7px;height:7px;border-radius:50%;background:${ok?'var(--green)':'var(--red)'};flex-shrink:0;margin-top:5px"></span>`;
-  };
+    function srcCard(icon, name, desc, ok, nav, pending) {
+      var click = (nav && !pending) ? ' onclick="showP(\''+nav+'\',null)" onmouseover="this.style.background=\'var(--sf2)\'" onmouseout="this.style.background=\'var(--sf)\'" style="cursor:pointer"' : ' style="cursor:default"';
+      var opacity = pending ? 'opacity:.5;' : '';
+      var dotHtml = pending ? '<span style="display:inline-block;width:7px;height:7px;border-radius:50%;background:var(--ht)"></span>' : dot(ok);
+      var badge = pending ? ' <span style="font-size:9px;padding:1px 5px;border-radius:6px;background:var(--ap);color:var(--amber)">Pronto</span>' : '';
+      return '<div'+click+' style="'+opacity+'padding:10px 12px;border-radius:var(--r);border:.5px solid var(--bd);background:var(--sf);display:flex;align-items:flex-start;gap:8px">'+
+        '<span style="font-size:15px;flex-shrink:0">'+icon+'</span>'+
+        '<div style="flex:1;min-width:0">'+
+          '<div style="display:flex;align-items:center;gap:5px;margin-bottom:2px">'+dotHtml+'<span style="font-size:11px;font-weight:500;color:var(--tx)">'+name+'</span>'+badge+'</div>'+
+          '<div style="font-size:10px;color:var(--ht);line-height:1.3">'+desc+'</div>'+
+        '</div></div>';
+    }
 
-  const modules = {
-    // ── DATA SOURCES ──
-    sources: [
-      { id:'ga4',  icon:'📊', name:'Google Analytics', desc:'Sesiones, usuarios, conversiones', conn: conn.ga4,  nav:'ga4'  },
-      { id:'gsc',  icon:'🔍', name:'Search Console',   desc:'Keywords, posiciones orgánicas',  conn: conn.gsc,  nav:'gsc'  },
-      { id:'ads',  icon:'📢', name:'Google Ads',        desc:'Campañas de pago, CTR, CPC',      conn: conn.ads,  nav:'ads'  },
-      { id:'li',   icon:'💼', name:'LinkedIn',          desc:'Followers, engagement, posts',    conn: conn.li,   nav:'li'   },
-      { id:'crm',  icon:'🏢', name:'CRM / HubSpot',    desc:'Pipeline, deals, oportunidades',  conn: conn.crm,  nav:'mon'  },
-      { id:'mail', icon:'📧', name:'Mailing masivo',    desc:'Campañas email, opens, replies',  conn: conn.mail, nav:'inst' },
-    ],
-    // ── SOCIAL (pending) ──
-    social_pending: [
-      { id:'ig',  icon:'📸', name:'Instagram',  desc:'Posts, stories, reach', pending:true },
-      { id:'yt',  icon:'🎬', name:'YouTube',    desc:'Vídeos, retención, subs', pending:true },
-      { id:'tt',  icon:'🎵', name:'TikTok',     desc:'Vídeos, FYP, engagement', pending:true },
-    ],
-    // ── ANALYTICS ──
-    analytics: [
-      { id:'ga4p',  icon:'📈', name:'Google Analytics', desc:'Tráfico, usuarios, embudo de conversión y top páginas con comparativas vs período anterior',      nav:'ga4',  color:'#1D9E75' },
-      { id:'gscp',  icon:'🔎', name:'Search Console',   desc:'Keywords orgánicas, impresiones, CTR y posición. Detecta oportunidades de mejora de posición',    nav:'gsc',  color:'#2563EB' },
-      { id:'adsp',  icon:'📢', name:'Google Ads',        desc:'Rendimiento de campañas, grupos de anuncios y palabras clave. ROI y recomendaciones IA',          nav:'ads',  color:'#DC2626' },
-      { id:'lip',   icon:'💼', name:'LinkedIn',          desc:'Crecimiento de seguidores, engagement por post y análisis de competidores en tiempo real',         nav:'li',   color:'#0891B2' },
-      { id:'oppsp', icon:'🎯', name:'Pipeline',          desc:'Visualización del pipeline de ventas por stage. Valor total, forecast y desglose por fuente',      nav:'opps', color:'#7C3AED' },
-      { id:'budp',  icon:'💰', name:'Budget & Costs',    desc:'Presupuesto mensual vs actuals. Sube tu Excel de gastos y el dashboard los categoriza automáticamente', nav:'budget', color:'#D97706' },
-    ],
-    // ── INTELLIGENCE ──
-    intelligence: [
-      { id:'kwi',  icon:'🧠', name:'Keyword Intelligence', desc:'Gap analysis de keywords. Detecta términos con alta demanda donde no apareces', nav:'kwi', color:'#7C3AED' },
-      { id:'seo',  icon:'🔬', name:'SEO Intelligence',     desc:'Auditor de páginas, chat SEO con web search, competitor spy y checklist SEO',   nav:'seo', color:'#2563EB' },
-      { id:'rep',  icon:'📅', name:'Monthly Report',       desc:'Resumen ejecutivo mensual con todos los KPIs consolidados en una vista',         nav:'report', color:'#0891B2' },
-    ],
-    // ── CONTENT ──
-    content: [
-      { id:'audit',   icon:'🔬', name:'Content Audit',       desc:'Escanea blog + LinkedIn + GSC + GA4 → clasifica temas → detecta gaps con alta demanda sin cubrir. Exporta a .txt y .json', nav:'audit',   color:'#BE185D' },
-      { id:'studio',  icon:'✍️', name:'Content Studio',      desc:'5 agentes: Instagram, LinkedIn, Newsletter, YouTube, Ads. Identidad de marca configurable con arquetipos. Guarda y exporta', nav:'content', color:'#1D9E75' },
-      { id:'ai',      icon:'🤖', name:'AI Insights',          desc:'Analiza tus métricas reales de GA4 + LinkedIn + GSC y genera recomendaciones semanales automáticas sobre qué hacer',         pending:true,  color:'#7C3AED' },
-      { id:'cal',     icon:'📅', name:'Calendario Editorial', desc:'Planifica qué publicar, cuándo y en qué plataforma. Basado en los gaps del Audit. Crea tareas en CRM automáticamente',      pending:true,  color:'#D97706' },
-      { id:'visual',  icon:'🎨', name:'Visual Studio',        desc:'Genera briefs de contenido visual: carruseles para Instagram, infografías para LinkedIn, thumbnails para YouTube',            pending:true,  color:'#DC2626' },
-      { id:'camp',    icon:'📡', name:'Campaign Analyzer',    desc:'Lee Google Ads + Mailing masivo y genera recomendaciones: qué pausar, qué escalar, qué probar esta semana',                  pending:true,  color:'#0891B2' },
-    ],
-  };
+    function modCard(icon, name, desc, color, nav, pending) {
+      var click = (nav && !pending) ? ' onclick="showP(\''+nav+'\',null)" onmouseover="this.style.background=\'var(--sf2)\'" onmouseout="this.style.background=\'var(--sf)\'"' : '';
+      var opacity = pending ? 'opacity:.55;' : '';
+      var badge = pending ? ' <span style="font-size:9px;padding:1px 6px;border-radius:8px;background:var(--ap);color:var(--amber);font-weight:500">Próximamente</span>' : '';
+      var arrow = (nav && !pending) ? '<div style="font-size:10px;color:'+color+';margin-top:5px;font-weight:500">Abrir →</div>' : '';
+      var cursor = (nav && !pending) ? 'cursor:pointer;' : 'cursor:default;';
+      return '<div'+click+' style="'+opacity+cursor+'padding:12px 14px;border-radius:var(--rl);border:.5px solid var(--bd);border-left:3px solid '+color+';background:var(--sf);transition:background .15s">'+
+        '<div style="display:flex;align-items:flex-start;gap:8px">'+
+          '<span style="font-size:16px;flex-shrink:0">'+icon+'</span>'+
+          '<div style="flex:1;min-width:0">'+
+            '<div style="font-size:12px;font-weight:500;color:var(--tx);margin-bottom:3px">'+name+badge+'</div>'+
+            '<div style="font-size:11px;color:var(--mt);line-height:1.5">'+desc+'</div>'+
+            arrow+
+          '</div>'+
+        '</div></div>';
+    }
 
-  const modCard = (m) => {
-    const isPending = m.pending;
-    const borderColor = m.color || 'var(--bd2)';
-    const clickable = !isPending && m.nav;
-    return `<div onclick="${clickable ? `showP('${m.nav}',null)` : ''}"
-      style="padding:12px 14px;border-radius:var(--rl);border:.5px solid ${borderColor}33;background:var(--sf);
-             cursor:${clickable ? 'pointer' : 'default'};transition:all .15s;opacity:${isPending ? '.55' : '1'};
-             border-left:3px solid ${borderColor};"
-      ${clickable ? `onmouseover="this.style.background='var(--sf2)'" onmouseout="this.style.background='var(--sf)'"` : ''}>
-      <div style="display:flex;align-items:flex-start;gap:8px">
-        <span style="font-size:16px;flex-shrink:0">${m.icon}</span>
-        <div style="flex:1;min-width:0">
-          <div style="display:flex;align-items:center;gap:6px;margin-bottom:3px">
-            <span style="font-size:12px;font-weight:500;color:var(--tx)">${m.name}</span>
-            ${isPending ? `<span style="font-size:9px;padding:1px 6px;border-radius:8px;background:var(--ap);color:var(--amber);font-weight:500">Próximamente</span>` : ''}
-          </div>
-          <div style="font-size:11px;color:var(--mt);line-height:1.5">${m.desc}</div>
-          ${clickable ? `<div style="font-size:10px;color:${borderColor};margin-top:5px;font-weight:500">Abrir →</div>` : ''}
-        </div>
-      </div>
-    </div>`;
-  };
+    function sectionLabel(text) {
+      return '<div style="font-size:10px;font-weight:600;color:var(--ht);text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px">'+text+'</div>';
+    }
 
-  const srcCard = (s) => {
-    const isPending = s.pending;
-    return `<div onclick="${s.nav && !isPending ? `showP('${s.nav}',null)` : ''}"
-      style="padding:10px 12px;border-radius:var(--r);border:.5px solid var(--bd);background:var(--sf);
-             cursor:${s.nav && !isPending ? 'pointer' : 'default'};transition:all .15s;opacity:${isPending?'.5':'1'};
-             display:flex;align-items:flex-start;gap:8px"
-      ${s.nav && !isPending ? `onmouseover="this.style.background='var(--sf2)'" onmouseout="this.style.background='var(--sf)'"` : ''}>
-      <span style="font-size:15px;flex-shrink:0">${s.icon}</span>
-      <div style="flex:1;min-width:0">
-        <div style="display:flex;align-items:center;gap:5px;margin-bottom:2px">
-          ${!isPending ? dot(s.conn) : dot(false, true)}
-          <span style="font-size:11px;font-weight:500;color:var(--tx)">${s.name}</span>
-          ${isPending ? `<span style="font-size:9px;padding:1px 5px;border-radius:6px;background:var(--ap);color:var(--amber)">Pronto</span>` : ''}
-        </div>
-        <div style="font-size:10px;color:var(--ht);line-height:1.3">${s.desc}</div>
-      </div>
-    </div>`;
-  };
+    function grid(minW, content) {
+      return '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax('+minW+'px,1fr));gap:8px;margin-bottom:8px">'+content+'</div>';
+    }
 
-  const connectedCount = Object.values(conn).filter(Boolean).length;
-  const totalSources = Object.keys(conn).length;
+    function flowSep(text) {
+      return '<div style="display:flex;align-items:center;gap:8px;margin:10px 0;color:var(--ht);font-size:11px">'+
+        '<div style="flex:1;height:.5px;background:var(--bd)"></div><span>'+text+'</span><div style="flex:1;height:.5px;background:var(--bd)"></div></div>';
+    }
 
-  el.innerHTML = `
-    <!-- Status bar -->
-    <div style="background:var(--sf);border:1px solid var(--bd);border-radius:var(--rl);padding:14px 18px;margin-bottom:16px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px">
-      <div>
-        <div style="font-size:13px;font-weight:500;color:var(--tx)">Estado del sistema</div>
-        <div style="font-size:11px;color:var(--mt);margin-top:2px">${connectedCount} de ${totalSources} fuentes conectadas</div>
-      </div>
-      <div style="display:flex;gap:10px;flex-wrap:wrap">
-        ${Object.entries(conn).map(([k,v])=>{
-          const labels={ga4:'GA4',gsc:'GSC',ads:'Ads',li:'LinkedIn',crm:'CRM',mail:'Mailing'};
-          return `<div style="display:flex;align-items:center;gap:5px;font-size:11px;color:var(--mt)">
-            <span style="width:7px;height:7px;border-radius:50%;background:${v?'var(--green)':'var(--red)'};display:inline-block"></span>
-            ${labels[k]}
-          </div>`;
-        }).join('')}
-        <button onclick="showP('settings',null)" style="padding:4px 12px;border:1px solid var(--bd2);border-radius:var(--r);font-size:11px;cursor:pointer;background:var(--sf2);color:var(--mt);font-family:'DM Sans',sans-serif">
-          Configurar →
-        </button>
-      </div>
-    </div>
+    // Status bar
+    var sLabels = {ga4:'GA4',gsc:'GSC',ads:'Ads',li:'LinkedIn',crm:'CRM',mail:'Mailing'};
+    var sDots = Object.keys(conn).map(function(k){
+      return '<div style="display:flex;align-items:center;gap:5px;font-size:11px;color:var(--mt)">'+
+        '<span style="width:7px;height:7px;border-radius:50%;display:inline-block;background:'+(conn[k]?'var(--green)':'#DC2626')+'"></span>'+sLabels[k]+'</div>';
+    }).join('');
 
-    <!-- Layer 1: Data Sources -->
-    <div style="margin-bottom:6px">
-      <div style="font-size:10px;font-weight:600;color:var(--ht);text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px">
-        Capa 1 — Fuentes de datos
-      </div>
-      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:8px;margin-bottom:8px">
-        ${modules.sources.map(srcCard).join('')}
-      </div>
-      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px">
-        ${modules.social_pending.map(srcCard).join('')}
-      </div>
-    </div>
+    var statusBar =
+      '<div style="background:var(--sf);border:1px solid var(--bd);border-radius:var(--rl);padding:14px 18px;margin-bottom:16px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px">'+
+        '<div><div style="font-size:13px;font-weight:500;color:var(--tx)">Estado del sistema</div>'+
+        '<div style="font-size:11px;color:var(--mt);margin-top:2px">'+connCount+' de 6 fuentes conectadas</div></div>'+
+        '<div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center">'+sDots+
+        '<button onclick="showP(\'settings\',null)" style="padding:4px 12px;border:1px solid var(--bd2);border-radius:var(--r);font-size:11px;cursor:pointer;background:var(--sf2);color:var(--mt);font-family:\'DM Sans\',sans-serif">Configurar →</button></div></div>';
 
-    <!-- Flow arrow -->
-    <div style="display:flex;align-items:center;gap:8px;margin:10px 0;color:var(--ht);font-size:11px">
-      <div style="flex:1;height:.5px;background:var(--bd)"></div>
-      <span>los datos de las fuentes alimentan los módulos</span>
-      <div style="flex:1;height:.5px;background:var(--bd)"></div>
-    </div>
+    var layer1 = sectionLabel('Capa 1 — Fuentes de datos') +
+      grid(150,
+        srcCard('📊','Google Analytics','Sesiones, usuarios, conversiones',conn.ga4,'ga4',false)+
+        srcCard('🔍','Search Console','Keywords, posiciones orgánicas',conn.gsc,'gsc',false)+
+        srcCard('📢','Google Ads','Campañas de pago, CTR, CPC',conn.ads,'ads',false)+
+        srcCard('💼','LinkedIn','Followers, engagement, posts',conn.li,'li',false)+
+        srcCard('🏢','CRM / HubSpot','Pipeline, deals, oportunidades',conn.crm,'mon',false)+
+        srcCard('📧','Mailing masivo','Campañas email, opens, replies',conn.mail,'inst',false)
+      )+
+      grid(150,
+        srcCard('📸','Instagram','Posts, stories, reach',false,null,true)+
+        srcCard('🎬','YouTube','Vídeos, retención, subs',false,null,true)+
+        srcCard('🎵','TikTok','Vídeos, FYP, engagement',false,null,true)
+      );
 
-    <!-- Layer 2: Analytics -->
-    <div style="margin-bottom:6px">
-      <div style="font-size:10px;font-weight:600;color:var(--ht);text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px">
-        Capa 2 — Análisis por canal
-      </div>
-      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:8px">
-        ${modules.analytics.map(modCard).join('')}
-      </div>
-    </div>
+    var layer2 = sectionLabel('Capa 2 — Análisis por canal') +
+      grid(220,
+        modCard('📈','Google Analytics','Tráfico, usuarios, embudo de conversión y top páginas con comparativas vs período anterior','#1D9E75','ga4',false)+
+        modCard('🔎','Search Console','Keywords orgánicas, impresiones, CTR y posición. Detecta oportunidades en posición 5-15','#2563EB','gsc',false)+
+        modCard('📢','Google Ads','Rendimiento de campañas, grupos de anuncios y palabras clave. ROI y recomendaciones IA','#DC2626','ads',false)+
+        modCard('💼','LinkedIn','Crecimiento de seguidores, engagement por post y análisis de competidores en tiempo real','#0891B2','li',false)+
+        modCard('🎯','Pipeline','Visualización del pipeline por stage. Valor total, forecast y desglose por fuente de origen','#7C3AED','opps',false)+
+        modCard('💰','Budget & Costs','Presupuesto mensual vs actuals. Sube tu Excel y el dashboard categoriza los gastos automáticamente','#D97706','budget',false)
+      );
 
-    <!-- Flow arrow -->
-    <div style="display:flex;align-items:center;gap:8px;margin:10px 0;color:var(--ht);font-size:11px">
-      <div style="flex:1;height:.5px;background:var(--bd)"></div>
-      <span>el análisis alimenta la inteligencia IA</span>
-      <div style="flex:1;height:.5px;background:var(--bd)"></div>
-    </div>
+    var layer3 = sectionLabel('Capa 3 — Inteligencia IA') +
+      grid(220,
+        modCard('🧠','Keyword Intelligence','Gap analysis de keywords. Detecta términos con alta demanda donde no apareces aún','#7C3AED','kwi',false)+
+        modCard('🔬','SEO Intelligence','Auditor de páginas, chat SEO con web search, competitor spy y checklist SEO completo','#2563EB','seo',false)+
+        modCard('📅','Monthly Report','Resumen ejecutivo mensual con todos los KPIs consolidados — listo para compartir','#0891B2','report',false)
+      );
 
-    <!-- Layer 3: Intelligence -->
-    <div style="margin-bottom:6px">
-      <div style="font-size:10px;font-weight:600;color:var(--ht);text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px">
-        Capa 3 — Inteligencia IA
-      </div>
-      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:8px">
-        ${modules.intelligence.map(modCard).join('')}
-      </div>
-    </div>
+    var layer4 = sectionLabel('Capa 4 — Contenido e IA generativa') +
+      grid(220,
+        modCard('🔬','Content Audit','Escanea blog + LinkedIn + GSC + GA4 → clasifica temas → detecta gaps con alta demanda sin cubrir','#BE185D','audit',false)+
+        modCard('✍️','Content Studio','5 agentes especializados (Instagram, LinkedIn, Newsletter, YouTube, Ads) con identidad de marca configurable','#1D9E75','content',false)+
+        modCard('🤖','AI Insights','Analiza tus métricas reales cada semana y genera recomendaciones automáticas sobre qué hacer','#7C3AED',null,true)+
+        modCard('📅','Calendario Editorial','Planifica publicaciones basado en los gaps del Audit. Crea tareas en CRM automáticamente','#D97706',null,true)+
+        modCard('🎨','Visual Studio','Genera briefs de contenido visual: carruseles Instagram, infografías LinkedIn, thumbnails YouTube','#DC2626',null,true)+
+        modCard('📡','Campaign Analyzer','Lee Google Ads + Mailing masivo y recomienda qué pausar, escalar o probar esta semana','#0891B2',null,true)
+      );
 
-    <!-- Flow arrow -->
-    <div style="display:flex;align-items:center;gap:8px;margin:10px 0;color:var(--ht);font-size:11px">
-      <div style="flex:1;height:.5px;background:var(--bd)"></div>
-      <span>todo converge en los módulos de contenido</span>
-      <div style="flex:1;height:.5px;background:var(--bd)"></div>
-    </div>
+    var footer = '<div style="background:var(--sf2);border-radius:var(--r);padding:12px 16px;margin-top:4px;font-size:11px;color:var(--mt);line-height:1.6">'+
+      '<strong style="color:var(--tx)">Módulos "Próximamente"</strong> están en el roadmap activo y se añadirán progresivamente. Haz clic en cualquier módulo activo para navegar directamente a él.</div>';
 
-    <!-- Layer 4: Content -->
-    <div style="margin-bottom:6px">
-      <div style="font-size:10px;font-weight:600;color:var(--ht);text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px">
-        Capa 4 — Contenido e IA generativa
-      </div>
-      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:8px">
-        ${modules.content.map(modCard).join('')}
-      </div>
-    </div>
+    el.innerHTML = statusBar + layer1 +
+      flowSep('los datos de las fuentes alimentan los módulos de análisis') + layer2 +
+      flowSep('el análisis alimenta la inteligencia IA') + layer3 +
+      flowSep('todo converge en los módulos de contenido') + layer4 + footer;
 
-    <!-- Footer note -->
-    <div style="background:var(--sf2);border-radius:var(--r);padding:12px 16px;margin-top:12px;font-size:11px;color:var(--mt);line-height:1.6">
-      <strong style="color:var(--tx)">Módulos marcados como "Próximamente"</strong> están en el roadmap y se añadirán progresivamente. Los módulos activos tienen acceso completo a datos en tiempo real a través de sus APIs correspondientes.
-    </div>`;
+  } catch(e) {
+    console.error('renderGuidePage error:', e);
+    var el2 = document.getElementById('guide-main');
+    if (el2) el2.innerHTML = '<div style="padding:20px;color:#DC2626;font-size:12px">Error: ' + e.message + '</div>';
+  }
 }
