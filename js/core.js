@@ -128,9 +128,15 @@ function launch(){
     buildSettings();loadAll();
     // Show Guide as entry page
     setTimeout(()=>{
-      const guideEl = document.querySelector('.ni[onclick*="guide"]');
-      showP('guide', guideEl);
-    }, 100);
+      document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+      document.querySelectorAll('.ni').forEach(n=>n.classList.remove('active'));
+      const guidePage = document.getElementById('page-guide');
+      if(guidePage) guidePage.classList.add('active');
+      const guideNav = document.querySelector('.ni[onclick*="\'guide\'"]');
+      if(guideNav) guideNav.classList.add('active');
+      document.getElementById('top-t').textContent = 'Guía del dashboard';
+      if(typeof renderGuidePage === 'function') renderGuidePage();
+    }, 300);
   }}).requestAccessToken();
 }
 
@@ -148,7 +154,10 @@ function showP(id,el){
   
   // 3. Hide date picker popup
   hideDatePicker();
-  
+
+  // Guide page renders immediately — no charts needed
+  if(id==='guide'){ if(typeof renderGuidePage==='function') renderGuidePage(); return; }
+
   // 4. Render charts after TWO animation frames (ensures browser has painted)
   requestAnimationFrame(()=>{
     requestAnimationFrame(()=>{

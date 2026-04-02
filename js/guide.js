@@ -6,14 +6,17 @@ function renderGuidePage() {
   const el = document.getElementById('guide-main');
   if (!el) return;
 
-  // Connection status
+  // Safe config access — works even before login completes
+  const cfg = (typeof CFG !== 'undefined') ? CFG : {};
+  const hasToken = !!(typeof TOKEN !== 'undefined' && TOKEN);
+
   const conn = {
-    ga4:  !!(CFG.clientId && CFG.ga4 && window.TOKEN),
-    gsc:  !!(CFG.gsc && window.TOKEN),
-    ads:  !!(CFG.ads && window.TOKEN),
-    li:   !!(CFG.liId || CFG.liToken),
-    crm:  !!(CFG.monday || CFG.hubspot),
-    mail: !!(CFG.instantly),
+    ga4:  !!(cfg.clientId && cfg.ga4 && hasToken),
+    gsc:  !!(cfg.gsc && hasToken),
+    ads:  !!(cfg.ads && hasToken),
+    li:   !!(cfg.liId || cfg.liToken),
+    crm:  !!(cfg.monday || cfg.hubspot),
+    mail: !!(cfg.instantly),
   };
 
   const dot = (ok, pending) => {
