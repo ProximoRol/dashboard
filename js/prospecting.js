@@ -97,6 +97,14 @@ let prRunning  = false;
 function renderProspectingPage() {
   const el = document.getElementById('prosp-main');
   if (!el) return;
+  try { _renderProspectingPage(el); }
+  catch(e) {
+    console.error('renderProspectingPage error:', e);
+    el.innerHTML = '<div style="padding:20px;color:#DC2626;font-size:12px;font-family:monospace">Error: ' + e.message + '</div>';
+  }
+}
+
+function _renderProspectingPage(el) {
 
   // Load saved state
   try {
@@ -280,9 +288,13 @@ function prUpdateBadge() {
 
 /* ── HUNTER.IO ── */
 function prGetHunterKey() {
+  // Read from CFG first (saved in Settings), fallback to local store
+  if (typeof CFG !== 'undefined' && CFG.hunter) return CFG.hunter;
   try { return JSON.parse(localStorage.getItem(PR_STORE)||'{}').hunterKey || ''; } catch(e){ return ''; }
 }
 function prSaveHunterKey(key) {
+  // Save both to CFG store and local
+  if (typeof CFG !== 'undefined') { CFG.hunter = key; try { localStorage.setItem('pr_cfg', JSON.stringify(CFG)); } catch(e){} }
   try { const d = JSON.parse(localStorage.getItem(PR_STORE)||'{}'); d.hunterKey=key; localStorage.setItem(PR_STORE,JSON.stringify(d)); } catch(e){}
 }
 

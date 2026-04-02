@@ -80,7 +80,7 @@ async function antFetch(body){
 function init(){
   const s=localStorage.getItem(CK);
   if(s)CFG=JSON.parse(s);
-  const m={clientId:'i-cid',ga4:'i-ga4',gsc:'i-gsc',ads:'i-ads',adsToken:'i-adstoken',liId:'i-liid',liOrg:'i-liorg',instantly:'i-inst',monday:'i-mon'};
+  const m={clientId:'i-cid',ga4:'i-ga4',gsc:'i-gsc',ads:'i-ads',adsToken:'i-adstoken',liId:'i-liid',liOrg:'i-liorg',instantly:'i-inst',monday:'i-mon',hunter:'i-hunter'};
   Object.entries(m).forEach(([k,id])=>{const el=document.getElementById(id);if(el&&CFG[k])el.value=CFG[k];});
   // Handle LinkedIn OAuth callback (code in URL after redirect)
   if(location.search.includes('code=')&&location.search.includes('state=')){
@@ -104,7 +104,7 @@ function saveG(){
   sv();tpf('g');
 }
 function savePF(id){
-  const m={li:['liId','i-liid','liOrg','i-liorg'],inst:['instantly','i-inst'],mon:['monday','i-mon']};
+  const m={li:['liId','i-liid','liOrg','i-liorg'],inst:['instantly','i-inst'],mon:['monday','i-mon'],hunter:['hunter','i-hunter']};
   const f=m[id];if(f.length===4){CFG[f[0]]=document.getElementById(f[1]).value.trim();CFG[f[2]]=document.getElementById(f[3]).value.trim();}
   else CFG[f[0]]=document.getElementById(f[1]).value.trim();
   sv();tpf(id);
