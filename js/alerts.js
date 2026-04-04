@@ -309,8 +309,8 @@ Sé directo. Sin introducción. Sin bullet points — usa párrafos cortos. En e
 
   try {
     const data = await antFetch({
-      model: 'claude-haiku-4-5-20251001',
-      max_tokens: 250,
+      model: 'claude-sonnet-4-20250514',
+      max_tokens: 350,
       messages: [{ role: 'user', content: prompt }],
     });
     const text = (data.content || []).filter(b => b.type === 'text').map(b => b.text).join('').trim();
@@ -341,8 +341,8 @@ function amRun() {
   amUpdateBadge();
   amRenderList();
 
-  /* Análisis IA después de los checks rápidos */
-  setTimeout(() => amRunAIAnalysis(), 1500);
+  /* Análisis IA — solo bajo demanda, nunca automático */
+  /* Para activar: pulsa "✦ Analizar con IA" en el panel de alertas */
 }
 
 /* Engancha a loadAll — se ejecuta 5 s después de cada refresh */

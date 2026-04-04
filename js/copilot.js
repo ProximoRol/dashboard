@@ -342,7 +342,7 @@ function cpBuildSystem(ctx) {
     : '';
 
   /* ── Memoria viva (si existe) ── */
-  const memorySummary = typeof memBuildSummary === 'function' ? memBuildSummary() : null;
+  const memorySummary = typeof memBuildSummary === 'function' ? memBuildSummary(ctx._topicHint || null) : null;
 
   /* ── P&L context (si está disponible) ── */
   let pnlContext = '';
@@ -412,7 +412,19 @@ async function cpStream(userMsg) {
   CP_BUSY = true;
   cpSetBusy(true);
 
+  /* ── Detectar tema para memoria contextual ── */
+  const topic  = cpDetectTopic(userMsg);
+  const model  = CP_DEEP_MODE ? 'claude-opus-4-5' : 'claude-sonnet-4-20250514';
+  const maxTok = CP_DEEP_MODE ? 2048 : 1024;
+
+  if (CP_DEEP_MODE) {
+    CP_DEEP_MODE = false; /* Auto-reset after one use */
+    cpToggleDeepMode();
+  }
+
   const ctx    = cpGatherContext();
+  /* Pass topic hint for contextual memory injection */
+  if (typeof memBuildSummary === 'function') ctx._topicHint = topic;
   const system = cpBuildSystem(ctx);
   CP_HISTORY.push({ role: 'user', content: userMsg });
 
@@ -432,8 +444,8 @@ async function cpStream(userMsg) {
         'anthropic-dangerous-direct-browser-access': 'true',
       },
       body: JSON.stringify({
-        model:      'claude-sonnet-4-20250514',
-        max_tokens: 1024,
+        model:      model,
+        max_tokens: maxTok,
         system,
         messages:   CP_HISTORY,
         stream:     true,
@@ -470,8 +482,8 @@ async function cpStream(userMsg) {
     CP_HISTORY.push({ role: 'assistant', content: fullText });
     cpFinalizePlaceholder(placeholderId, fullText);
 
-    /* ── Aprendizaje automático en background ── */
-    if (typeof memAutoExtract === 'function') memAutoExtract(userMsg, fullText);
+    /* ── Session buffer (gratis — sin llamada API) ── */
+    if (typeof cpBufferSession === 'function') cpBufferSession(userMsg, fullText);
     if (typeof memIncrementChats === 'function') memIncrementChats();
 
   } catch (err) {
@@ -569,7 +581,80 @@ function cpSetBusy(busy) {
   if (sugg)  sugg.style.display = busy ? 'none' : 'flex';
 }
 
-/* ── Panel toggle ── */
+/* ══════════════════════════════════════════════
+   SESSION BUFFER — acumula sin coste API
+   Se extrae solo cuando el usuario lo pide
+   o automáticamente 1x/día máximo
+══════════════════════════════════════════════ */
+
+const CP_SESSION_KEY = 'pr_session_buffer_v1';
+
+function cpBufferSession(userMsg, assistantMsg) {
+  try {
+    const buf = JSON.parse(localStorage.getItem(CP_SESSION_KEY) || '[]');
+    buf.push({ ts: Date.now(), user: userMsg.slice(0, 300), asst: assistantMsg.slice(0, 500) });
+    localStorage.setItem(CP_SESSION_KEY, JSON.stringify(buf.slice(-25)));
+    cpUpdateSaveBtn();
+  } catch (_) {}
+}
+
+function cpGetBufferCount() {
+  try { return JSON.parse(localStorage.getItem(CP_SESSION_KEY) || '[]').length; }
+  catch (_) { return 0; }
+}
+
+function cpUpdateSaveBtn() {
+  const btn = document.getElementById('cp-save-btn');
+  if (!btn) return;
+  const count = cpGetBufferCount();
+  btn.style.display = count === 0 ? 'none' : 'flex';
+  if (count > 0) btn.innerHTML = `<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/></svg> Guardar sesión (${count})`;
+}
+
+async function cpSaveSession() {
+  const buf = JSON.parse(localStorage.getItem(CP_SESSION_KEY) || '[]');
+  if (buf.length === 0 || !CFG.ak) return;
+  const btn = document.getElementById('cp-save-btn');
+  if (btn) { btn.disabled = true; btn.innerHTML = '⟳ Guardando…'; }
+  if (typeof memAutoExtract === 'function') {
+    await memAutoExtract(
+      buf.map(b => b.user).join('\n---\n'),
+      buf.map(b => b.asst).join('\n---\n')
+    );
+  }
+  localStorage.removeItem(CP_SESSION_KEY);
+  if (btn) { btn.disabled = false; btn.style.display = 'none'; }
+  cpAddMsg('assistant', '✅ **Sesión guardada.** Analicé los intercambios y actualicé mi memoria con los aprendizajes más relevantes. En la próxima conversación tendré más contexto sobre Próximo Rol.');
+}
+
+/* ── Deep Mode (Opus) toggle ── */
+let CP_DEEP_MODE = false;
+
+function cpToggleDeepMode() {
+  CP_DEEP_MODE = !CP_DEEP_MODE;
+  const btn = document.getElementById('cp-deep-btn');
+  if (!btn) return;
+  btn.style.background   = CP_DEEP_MODE ? 'var(--pp)' : '';
+  btn.style.color        = CP_DEEP_MODE ? 'var(--purple)' : '';
+  btn.style.borderColor  = CP_DEEP_MODE ? '#DDD6FE' : '';
+  btn.title = CP_DEEP_MODE
+    ? 'Modo Profundo ACTIVO — usando Opus (más lento, más preciso). Clic para desactivar.'
+    : 'Activar Modo Profundo (Opus) para la siguiente respuesta';
+}
+
+/* ── Detect topic from message for contextual memory injection ── */
+function cpDetectTopic(msg) {
+  const m = msg.toLowerCase();
+  if (/linkedin|red social|post|publicaci/.test(m)) return 'linkedin';
+  if (/email|instantly|campaña|nurturing|apertura/.test(m)) return 'email';
+  if (/seo|keyword|palabra|búsqueda|google|posici/.test(m)) return 'seo';
+  if (/pipeline|oportunidad|crm|lead|cliente|venta/.test(m)) return 'pipeline';
+  if (/presupuesto|budget|coste|cac|ltv|revenue|ingreso/.test(m)) return 'budget';
+  if (/instagram|facebook|reel|story/.test(m)) return 'instagram';
+  if (/contenido|content|blog|artículo|copy/.test(m)) return 'content';
+  if (/audiencia|cliente ideal|perfil|buyer/.test(m)) return 'audience';
+  return null;
+}
 function toggleCopilot() {
   CP_OPEN = !CP_OPEN;
   const panel = document.getElementById('copilot-panel');

@@ -93,7 +93,7 @@ function memSave(mem) {
 ══════════════════════════════════════════ */
 
 /** Añadir insight al historial (auto-extraído o manual) */
-function memAddInsight(text, category = 'general', actionable = true) {
+function memAddInsight(text, category = 'general', actionable = true, confidence = 3, revenueImpact = 'medium') {
   const mem = memLoad();
   const insight = {
     id         : 'ins_' + Date.now(),
@@ -101,6 +101,9 @@ function memAddInsight(text, category = 'general', actionable = true) {
     category,
     text,
     actionable,
+    confidence,           /* 1-5: how confident we are this is correct */
+    revenueImpact,        /* high | medium | low | none */
+    confirmations : 0,    /* increments when user acts on it and it works */
     status     : actionable ? 'pending' : 'noted',
     source     : 'auto',
   };
@@ -231,45 +234,89 @@ function memSetActuals(month, year, actuals) {
 
 let _memExtractTimer = null;
 
+/* ── Simple text similarity for deduplication (Jaccard on words) ── */
+function memTextSimilarity(a, b) {
+  const words = s => new Set(s.toLowerCase().replace(/[^a-záéíóúñ\s]/gi,'').split(/\s+/).filter(w => w.length > 3));
+  const wa = words(a), wb = words(b);
+  const intersection = [...wa].filter(w => wb.has(w)).length;
+  const union = new Set([...wa, ...wb]).size;
+  return union === 0 ? 0 : intersection / union;
+}
+
+/* ── Check if insight is duplicate of existing ones ── */
+function memIsDuplicate(text, existingInsights, threshold = 0.55) {
+  return existingInsights.slice(0, 20).some(i => memTextSimilarity(text, i.text) > threshold);
+}
+
 async function memAutoExtract(userMsg, assistantMsg) {
   if (!CFG.ak) return;
 
   /* Solo extraer si la conversación fue sustancial */
-  if (assistantMsg.length < 100) return;
+  if (assistantMsg.length < 120) return;
 
-  /* Rate limiting — espera 2s desde la última extracción */
+  /* Rate limiting — espera 2.5s desde la última extracción */
   clearTimeout(_memExtractTimer);
   _memExtractTimer = setTimeout(async () => {
     try {
-      const prompt = `Analiza este intercambio de marketing y extrae SOLO si hay algo concreto y accionable.
+      /* Incluir contexto de memoria existente para evitar duplicados */
+      const mem = memLoad();
+      const existingTopics = mem.insights.slice(0, 8).map(i => i.text).join(' | ');
 
-USUARIO: ${userMsg.slice(0, 300)}
-ASISTENTE: ${assistantMsg.slice(0, 600)}
+      const prompt = `Eres el analizador de memoria de marketing para Próximo Rol (coaching de entrevistas, España/LATAM).
 
-Responde SOLO en JSON válido (sin markdown) con esta estructura:
+CONTEXTO YA GUARDADO (para evitar duplicados): ${existingTopics || 'ninguno todavía'}
+
+INTERCAMBIO A ANALIZAR:
+USUARIO: ${userMsg.slice(0, 400)}
+ASISTENTE: ${assistantMsg.slice(0, 800)}
+
+Extrae SOLO insights que sean:
+1. Específicos y accionables para Próximo Rol (no genéricos de marketing)
+2. Nuevos — no repitas lo que ya está en el contexto guardado
+3. Con impacto potencial en revenue, leads o conversión
+
+Responde ÚNICAMENTE en JSON válido (sin markdown, sin backticks):
 {
   "insights": [
-    {"category": "seo|content|linkedin|email|pipeline|budget|strategy|audience", "text": "insight concreto en 1 frase", "actionable": true}
+    {
+      "category": "seo|content|linkedin|email|pipeline|budget|strategy|audience|conversion",
+      "text": "insight específico en máximo 20 palabras",
+      "actionable": true,
+      "confidence": 1-5,
+      "revenueImpact": "high|medium|low|none"
+    }
   ],
   "recommendations": [
-    {"category": "string", "channel": "string|null", "text": "recomendación específica en 1 frase", "priority": "high|medium|low"}
+    {
+      "category": "string",
+      "channel": "seo|linkedin|email|ads|instagram|crm|null",
+      "text": "acción concreta en máximo 20 palabras",
+      "priority": "high|medium|low",
+      "effort": "low|medium|high"
+    }
   ]
 }
 
-Máximo 2 insights y 1 recomendación. Si no hay nada concreto y accionable, devuelve {"insights":[],"recommendations":[]}.`;
+Máximo 2 insights y 1 recomendación. Si no hay nada nuevo y concreto, devuelve exactamente: {"insights":[],"recommendations":[]}`;
 
       const data = await antFetch({
-        model      : 'claude-haiku-4-5-20251001',
-        max_tokens : 300,
+        model      : 'claude-sonnet-4-20250514',
+        max_tokens : 400,
         messages   : [{ role: 'user', content: prompt }],
       });
 
       const raw  = (data.content || []).filter(b => b.type === 'text').map(b => b.text).join('').trim();
       const parsed = JSON.parse(raw.replace(/```json|```/g, '').trim());
 
-      (parsed.insights || []).forEach(ins =>
-        memAddInsight(ins.text, ins.category, ins.actionable)
-      );
+      const mem2 = memLoad(); /* Re-load in case it changed */
+
+      (parsed.insights || []).forEach(ins => {
+        /* Deduplication check */
+        if (memIsDuplicate(ins.text, mem2.insights)) return;
+        /* Only store if confidence >= 2 and genuinely actionable */
+        if ((ins.confidence || 3) < 2) return;
+        memAddInsight(ins.text, ins.category, ins.actionable !== false, ins.confidence || 3, ins.revenueImpact || 'medium');
+      });
       (parsed.recommendations || []).forEach(rec => memAddRecommendation(rec));
 
       /* Actualizar panel de memoria si está abierto */
@@ -286,7 +333,7 @@ Máximo 2 insights y 1 recomendación. Si no hay nada concreto y accionable, dev
    Máx ~400 tokens para no gastar contexto
 ══════════════════════════════════════════ */
 
-function memBuildSummary() {
+function memBuildSummary(topicHint = null) {
   const mem = memLoad();
 
   const lines = [];
@@ -303,50 +350,47 @@ function memBuildSummary() {
   const cal = mem.calibration;
   if (cal.workingKeywords.length)       lines.push(`Keywords que han generado tráfico: ${cal.workingKeywords.slice(0, 5).join(', ')}`);
   if (cal.workingContentFormats.length) lines.push(`Formatos de contenido que funcionan: ${cal.workingContentFormats.slice(0, 3).join(', ')}`);
-  if (Object.keys(cal.channelConversion).length) {
-    const ccs = Object.entries(cal.channelConversion)
-      .map(([k, v]) => `${k}: ${(v * 100).toFixed(1)}%`).join(', ');
-    lines.push(`Tasas de conversión aprendidas: ${ccs}`);
-  }
   if (cal.avgCAC) lines.push(`CAC promedio observado: €${cal.avgCAC}`);
 
-  /* Recomendaciones pendientes (top 3) */
-  const pending = mem.recommendations.pending.slice(0, 3);
+  /* Recomendaciones pendientes (top 3 por prioridad) */
+  const pending = mem.recommendations.pending
+    .sort((a,b) => (a.priority === 'high' ? -1 : b.priority === 'high' ? 1 : 0))
+    .slice(0, 3);
   if (pending.length) {
-    lines.push(`Recomendaciones pendientes de implementar: ${pending.map(r => r.text).join(' | ')}`);
+    lines.push(`Recomendaciones pendientes: ${pending.map(r => r.text).join(' | ')}`);
   }
 
-  /* Lo que no funcionó */
+  /* Lo que no funcionó — CRÍTICO para no repetirlo */
   const failed = mem.recommendations.failed.slice(0, 3);
   if (failed.length) {
-    lines.push(`Intentos que NO funcionaron (no repetir): ${failed.map(r => `${r.text} (${r.outcome || 'sin resultado'})`).join(' | ')}`);
+    lines.push(`NO repetir — intentos fallidos: ${failed.map(r => `${r.text}`).join(' | ')}`);
   }
 
-  /* Experimentos recientes */
-  const exps = mem.experiments.filter(e => e.impact).slice(0, 4);
-  if (exps.length) {
-    lines.push(`Experimentos recientes: ${exps.map(e => `[${e.impact}] ${e.action} en ${e.channel}`).join(' | ')}`);
+  /* Insights con alta confianza — contextuales si hay topicHint */
+  const highQualityInsights = mem.insights
+    .filter(i => (i.confidence || 3) >= 3 && i.actionable)
+    .filter(i => !topicHint || i.category === topicHint || i.revenueImpact === 'high')
+    .slice(0, 5);
+
+  if (highQualityInsights.length) {
+    lines.push(`Aprendizajes validados: ${highQualityInsights.map(i => i.text).join(' | ')}`);
   }
 
   /* Historial de objetivos */
-  const lastGoal = mem.goalsHistory.slice(-2);
-  if (lastGoal.length) {
-    lastGoal.forEach(g => {
-      if (g.actuals) {
-        lines.push(`${g.month}/${g.year}: objetivo ${g.targets?.clients || '?'} clientes → real ${g.actuals.clients || '?'} clientes (${g.delta?.clients >= 0 ? '+' : ''}${g.delta?.clients || 0})`);
-      }
-    });
-  }
-
-  /* Insights recientes (top 5, solo los accionables) */
-  const recentIns = mem.insights.filter(i => i.actionable).slice(0, 5);
-  if (recentIns.length) {
-    lines.push(`Aprendizajes recientes de conversaciones: ${recentIns.map(i => i.text).join(' | ')}`);
-  }
+  const lastGoal = mem.goalsHistory.filter(g => g.actuals).slice(-2);
+  lastGoal.forEach(g => {
+    if (g.actuals) {
+      lines.push(`${g.month}/${g.year}: objetivo ${g.targets?.clients || '?'} clientes → real ${g.actuals.clients || '?'}`);
+    }
+  });
 
   if (lines.length === 0) return null;
 
-  return `## MEMORIA DEL NEGOCIO (${mem.totalChats} conversaciones previas)\n${lines.map(l => `- ${l}`).join('\n')}`;
+  return `## MEMORIA DEL NEGOCIO (${mem.totalChats} conversaciones · score promedio: ${
+    mem.insights.length > 0
+      ? (mem.insights.reduce((s,i) => s + (i.confidence||3), 0) / mem.insights.length).toFixed(1)
+      : 'N/A'
+  })\n${lines.map(l => `- ${l}`).join('\n')}`;
 }
 
 function memIncrementChats() {

@@ -334,7 +334,7 @@ Da un análisis P&L en 3 párrafos breves (max 180 palabras total):
 Sé directo. En español. Sin introducción.`;
 
   try {
-    const data2 = await antFetch({ model:'claude-haiku-4-5-20251001', max_tokens:300, messages:[{role:'user',content:prompt}] });
+    const data2 = await antFetch({ model:'claude-sonnet-4-20250514', max_tokens:400, messages:[{role:'user',content:prompt}] });
     const text = (data2.content||[]).filter(b=>b.type==='text').map(b=>b.text).join('').trim();
     const box = document.getElementById('pnl-ai-box');
     if (box) {
