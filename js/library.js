@@ -44,7 +44,6 @@ function libSnapshotIsStale(){const a=libSnapshotAge();return a===null||a>7;}
    el navegador sin necesitar tool use
 ══════════════════════════════════════ */
 async function libFetchHtml(url) {
-  /* Intentar varios proxies CORS en orden */
   const proxies = [
     `https://api.allorigins.win/get?url=${encodeURIComponent(url)}`,
     `https://corsproxy.io/?${encodeURIComponent(url)}`,
@@ -55,10 +54,14 @@ async function libFetchHtml(url) {
     try {
       const r = await fetch(proxyUrl, { signal: AbortSignal.timeout(12000) });
       if (!r.ok) { lastErr = `HTTP ${r.status}`; continue; }
-      const data = await r.json().catch(async () => ({ contents: await r.text() }));
-      const html = data.contents || data;
+      /* Leer el body UNA SOLA VEZ como texto, luego intentar parsear JSON */
+      const rawText = await r.text();
+      let html = rawText;
+      try {
+        const parsed = JSON.parse(rawText);
+        html = parsed.contents || parsed.body || rawText;
+      } catch(_) { /* no era JSON, usar el texto directamente */ }
       if (typeof html !== 'string' || html.length < 50) { lastErr = 'Respuesta vacía'; continue; }
-      /* Strip tags agresivamente */
       const text = html
         .replace(/<script[\s\S]*?<\/script>/gi, '')
         .replace(/<style[\s\S]*?<\/style>/gi, '')
@@ -69,11 +72,11 @@ async function libFetchHtml(url) {
         .replace(/<[^>]+>/g, ' ')
         .replace(/\s{2,}/g, ' ')
         .trim();
-      if (text.length < 50) { lastErr = 'Contenido insuficiente tras limpiar HTML'; continue; }
-      return text.slice(0, 7000); /* Límite de tokens */
+      if (text.length < 50) { lastErr = 'Contenido insuficiente'; continue; }
+      return text.slice(0, 7000);
     } catch (e) { lastErr = e.message; }
   }
-  throw new Error('No se pudo acceder a la página (' + lastErr + '). Verifica que la URL sea correcta y la página sea pública.');
+  throw new Error('No se pudo acceder a la página (' + lastErr + '). Verifica que la URL sea correcta y pública.');
 }
 
 /* ══════════════════════════════════════
