@@ -7,7 +7,6 @@
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
 <script src="https://accounts.google.com/gsi/client" async defer></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 <link rel="stylesheet" href="css/styles.css">
 </head>
 <body>
@@ -174,8 +173,11 @@
       <div class="ni" onclick="showP('mon',this)"><div class="nico">🏢</div>CRM<span class="nb nb-off" id="nb-mon">—</span></div>
       <div class="ni" onclick="showP('prosp',this)"><div class="nico">🎓</div>Prospecting<span class="nb nb-pend" id="nb-prosp">B2B</span></div>
       <div class="ns" style="margin-top:6px">Planning</div>
+      <div class="ni" onclick="showP('pnl',this)"><div class="nico">📈</div>P&L · Revenue<span class="nb" style="background:#EFF6FF;color:#2563EB">P&L</span></div>
+      <div class="ni" onclick="showP('review',this)"><div class="nico">📅</div>Revisión periódica<span class="nb" style="background:#F5F3FF;color:#7C3AED">Weekly</span></div>
       <div class="ni" onclick="showP('budget',this)"><div class="nico">💰</div>Budget & Costs</div>
       <div class="ns" style="margin-top:6px">Content & IA</div>
+      <div class="ni" onclick="showP('library',this)"><div class="nico">📚</div>Biblioteca<span class="nb" style="background:#EFF6FF;color:#2563EB">Nueva</span></div>
       <div class="ni" onclick="showP('audit',this)"><div class="nico">🔬</div>Content Audit<span class="nb nb-pend" id="nb-audit">IA</span></div>
       <div class="ni" onclick="showP('content',this)"><div class="nico">✍️</div>Content Studio<span class="nb nb-pend" id="nb-content">IA</span></div>
       <div class="ni" style="opacity:.45;cursor:default"><div class="nico">🤖</div>AI Insights<span class="nb nb-pend">Pronto</span></div>
@@ -1049,6 +1051,11 @@
   <div class="sh"><span class="sl">Guía del dashboard</span><div class="sln"></div></div>
   <div id="guide-main"></div>
 </div>
+
+<!-- ── Módulos inyectados por JS (páginas vacías, los módulos las rellenan) ── -->
+<div class="page" id="page-pnl"></div>
+<div class="page" id="page-review"></div>
+<div class="page" id="page-library"></div>
 
 <div class="page" id="page-ig">
   <div class="sh">
