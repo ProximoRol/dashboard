@@ -503,7 +503,9 @@ function libSaveManualUrl(){
     publishedAt:new Date().toISOString(),createdAt:new Date().toISOString(),source:'manual'});
   document.getElementById('lib-url-modal')?.remove();
   if(document.getElementById('page-library')?.classList.contains('active'))libRenderItems();
-}prefilledChannel,prefilledContent,prefilledTitle){
+}
+
+function libShowAddModal(prefilledChannel,prefilledContent,prefilledTitle){
   document.getElementById('lib-add-modal')?.remove();
   const ov=document.createElement('div');ov.id='lib-add-modal';
   ov.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:9999;display:flex;align-items:center;justify-content:center;padding:20px';
