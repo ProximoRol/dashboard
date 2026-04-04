@@ -39,40 +39,93 @@ function libSnapshotAge(){const s=libGetSnapshot();if(!s)return null;return Math
 function libSnapshotIsStale(){const a=libSnapshotAge();return a===null||a>7;}
 
 /* ══════════════════════════════════════
-   OPCIÓN C — SYNC SEMANAL
-   Una llamada, guarda todo, válido 7 días
+   HELPER — Fetch HTML via CORS proxy
+   Descarga la página directamente desde
+   el navegador sin necesitar tool use
+══════════════════════════════════════ */
+async function libFetchHtml(url) {
+  /* Intentar varios proxies CORS en orden */
+  const proxies = [
+    `https://api.allorigins.win/get?url=${encodeURIComponent(url)}`,
+    `https://corsproxy.io/?${encodeURIComponent(url)}`,
+    `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(url)}`,
+  ];
+  let lastErr = '';
+  for (const proxyUrl of proxies) {
+    try {
+      const r = await fetch(proxyUrl, { signal: AbortSignal.timeout(12000) });
+      if (!r.ok) { lastErr = `HTTP ${r.status}`; continue; }
+      const data = await r.json().catch(async () => ({ contents: await r.text() }));
+      const html = data.contents || data;
+      if (typeof html !== 'string' || html.length < 50) { lastErr = 'Respuesta vacía'; continue; }
+      /* Strip tags agresivamente */
+      const text = html
+        .replace(/<script[\s\S]*?<\/script>/gi, '')
+        .replace(/<style[\s\S]*?<\/style>/gi, '')
+        .replace(/<nav[\s\S]*?<\/nav>/gi, '')
+        .replace(/<footer[\s\S]*?<\/footer>/gi, '')
+        .replace(/<header[\s\S]*?<\/header>/gi, '')
+        .replace(/<!--[\s\S]*?-->/g, '')
+        .replace(/<[^>]+>/g, ' ')
+        .replace(/\s{2,}/g, ' ')
+        .trim();
+      if (text.length < 50) { lastErr = 'Contenido insuficiente tras limpiar HTML'; continue; }
+      return text.slice(0, 7000); /* Límite de tokens */
+    } catch (e) { lastErr = e.message; }
+  }
+  throw new Error('No se pudo acceder a la página (' + lastErr + '). Verifica que la URL sea correcta y la página sea pública.');
+}
+
+/* ══════════════════════════════════════
+   OPCIÓN C — SYNC SEMANAL DEL SITIO
+   Fetchea homepage + sitemap via CORS proxy,
+   luego Claude analiza el texto — sin tools
 ══════════════════════════════════════ */
 async function libSyncSite(silent){
   if(!CFG?.ak){if(!silent)alert('Necesitas la API key de Anthropic en Settings.');return;}
   const btn=document.getElementById('lib-sync-btn');
   if(btn){btn.disabled=true;btn.textContent='⟳ Sincronizando…';}
   try{
-    const resp=await fetch('https://api.anthropic.com/v1/messages',{
-      method:'POST',
-      headers:{'Content-Type':'application/json','x-api-key':CFG.ak,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},
-      body:JSON.stringify({
-        model:'claude-haiku-4-5-20251001',max_tokens:2000,
-        tools:[{type:'web_search_20250305',name:'web_search'}],
-        messages:[{role:'user',content:`Analiza el sitio web proximorol.com. Busca "site:proximorol.com" y visita la homepage.
-Necesito: páginas principales con URLs y títulos, si hay blog con últimos 5-10 posts, keywords en los textos, servicios descritos.
-Devuelve SOLO JSON válido (sin markdown):
-{"pages":[{"url":"...","title":"...","description":"...","keywords":["..."]}],"blog":{"exists":true,"posts":[{"url":"...","title":"...","summary":"..."}]},"services":["..."],"mainKeywords":["..."],"missingKeywords":["..."],"summary":"..."}`}]
-      })
-    });
-    if(!resp.ok)throw new Error(`HTTP ${resp.status}`);
-    const data=await resp.json();
-    const raw=(data.content||[]).filter(b=>b.type==='text').map(b=>b.text).join('').trim();
-    const m=raw.match(/\{[\s\S]*\}/);
-    if(!m)throw new Error('No se pudo parsear la respuesta');
-    const parsed=JSON.parse(m[0]);
+    /* 1. Descargar la homepage */
+    const homeText = await libFetchHtml('https://www.proximorol.com/').catch(() =>
+      libFetchHtml('https://proximorol.com/')
+    );
+
+    /* 2. Intentar también el sitemap para descubrir páginas */
+    let sitemapText = '';
+    try { sitemapText = await libFetchHtml('https://www.proximorol.com/sitemap.xml'); } catch(_) {}
+
+    /* 3. Claude analiza el texto — sin tools, sin ciclos extra */
+    const prompt = `Analiza este contenido del sitio web proximorol.com y extrae información estructurada.
+
+HOMEPAGE:
+${homeText.slice(0,4000)}
+
+${sitemapText ? `SITEMAP (URLs disponibles):\n${sitemapText.slice(0,1500)}` : ''}
+
+Basándote en este contenido, extrae:
+- Páginas identificadas con sus URLs y títulos
+- Si hay blog y posts visibles
+- Servicios ofrecidos
+- Keywords presentes en el texto
+- Keywords importantes que NO aparecen pero deberían para el nicho de coaching de entrevistas
+
+Devuelve SOLO JSON válido sin markdown ni backticks:
+{"pages":[{"url":"...","title":"...","description":"...","keywords":[]}],"blog":{"exists":true,"posts":[{"url":"","title":"","summary":""}]},"services":[],"mainKeywords":[],"missingKeywords":[],"summary":"descripción del sitio en 2-3 frases"}`;
+
+    const data = await antFetch({ model:'claude-haiku-4-5-20251001', max_tokens:2000, messages:[{role:'user',content:prompt}] });
+    const raw = (data.content||[]).filter(b=>b.type==='text').map(b=>b.text).join('').trim();
+    const m = raw.match(/\{[\s\S]*\}/);
+    if(!m) throw new Error('Claude no devolvió JSON válido. Inténtalo de nuevo.');
+    const parsed = JSON.parse(m[0]);
     libSaveSnapshot(parsed);
     if(!silent){
-      const pC=parsed.pages?.length||0,bC=parsed.blog?.posts?.length||0;
-      alert(`✅ Sitio sincronizado.\n${pC} páginas · ${bC} posts de blog.\nEl co-pilot ya conoce proximorol.com.`);
+      const pC=parsed.pages?.length||0, bC=parsed.blog?.posts?.length||0;
+      alert(`✅ Sitio sincronizado.\n${pC} páginas · ${bC} posts de blog encontrados.\nEl co-pilot ya conoce proximorol.com.`);
     }
-    if(document.getElementById('page-library')?.classList.contains('active'))renderLibraryPage();
+    if(document.getElementById('page-library')?.classList.contains('active')) renderLibraryPage();
   }catch(err){
-    if(!silent)alert('Error al sincronizar: '+err.message);
+    if(!silent) alert('Error al sincronizar: '+err.message);
     console.warn('Sync failed:',err.message);
   }finally{
     if(btn){btn.disabled=false;btn.textContent='🔄 Sincronizar sitio';}
@@ -81,59 +134,62 @@ Devuelve SOLO JSON válido (sin markdown):
 
 /* ══════════════════════════════════════
    OPCIÓN B — FETCH DE URL INDIVIDUAL
-   Se fetchea una vez → gratis para siempre
+   CORS proxy → texto limpio → Claude analiza
+   Sin tools, sin ciclos, sin fallos de parsing
 ══════════════════════════════════════ */
 async function libFetchAndSaveUrl(url,channel,title){
-  if(!CFG?.ak)throw new Error('Necesitas la API key de Anthropic en Settings.');
-  if(!url)throw new Error('URL vacía');
-  const resp=await fetch('https://api.anthropic.com/v1/messages',{
-    method:'POST',
-    headers:{'Content-Type':'application/json','x-api-key':CFG.ak,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},
-    body:JSON.stringify({
-      model:'claude-haiku-4-5-20251001',max_tokens:1500,
-      tools:[{type:'web_search_20250305',name:'web_search'}],
-      messages:[{role:'user',content:`Visita esta URL y extráeme el contenido principal: ${url}
-Devuelve SOLO JSON válido:
-{"title":"...","description":"...","mainContent":"texto principal máx 1200 palabras","keywords":["..."],"publishDate":"fecha o null","contentType":"blog_post|landing_page|service_page|other"}`}]
-    })
-  });
-  if(!resp.ok)throw new Error(`HTTP ${resp.status}`);
-  const data=await resp.json();
-  const raw=(data.content||[]).filter(b=>b.type==='text').map(b=>b.text).join('').trim();
-  const m=raw.match(/\{[\s\S]*\}/);
-  if(!m)throw new Error('No se pudo leer el contenido de la página');
-  const parsed=JSON.parse(m[0]);
+  if(!CFG?.ak) throw new Error('Necesitas la API key de Anthropic en Settings.');
+  if(!url) throw new Error('URL vacía');
+
+  /* 1. Descargar y limpiar la página */
+  const pageText = await libFetchHtml(url);
+
+  /* 2. Claude extrae el contenido estructurado — sin tools */
+  const prompt = `Analiza este contenido de página web y extráelo de forma estructurada.
+
+URL: ${url}
+CONTENIDO DE LA PÁGINA:
+${pageText.slice(0, 5000)}
+
+Devuelve SOLO JSON válido sin markdown ni backticks:
+{"title":"título de la página o post","description":"descripción breve de qué trata","mainContent":"el texto principal relevante sin navegación ni footer (máx 1000 palabras)","keywords":["palabras","clave","del","contenido"],"publishDate":"fecha si la hay o null","contentType":"blog_post|landing_page|service_page|other"}`;
+
+  const data = await antFetch({ model:'claude-haiku-4-5-20251001', max_tokens:1500, messages:[{role:'user',content:prompt}] });
+  const raw = (data.content||[]).filter(b=>b.type==='text').map(b=>b.text).join('').trim();
+  const m = raw.match(/\{[\s\S]*\}/);
+  if(!m) throw new Error('No se pudo procesar el contenido de la página');
+  const parsed = JSON.parse(m[0]);
+
   return libAdd({
-    channel:channel||'blog',title:title||parsed.title||url,
-    content:parsed.mainContent||'',url,keywords:parsed.keywords||[],
-    contentType:parsed.contentType,status:'published',
+    channel:channel||'blog', title:title||parsed.title||url,
+    content:parsed.mainContent||pageText.slice(0,1000),
+    url, keywords:parsed.keywords||[],
+    contentType:parsed.contentType,
+    status:'published',
     publishedAt:parsed.publishDate?new Date(parsed.publishDate).toISOString():new Date().toISOString(),
-    createdAt:new Date().toISOString(),source:'url_fetch',fetchedAt:new Date().toISOString()
+    createdAt:new Date().toISOString(), source:'url_fetch', fetchedAt:new Date().toISOString()
   });
 }
 
 /* ══════════════════════════════════════
    OPCIÓN A — WEB SEARCH EN TIEMPO REAL
+   Usa el tool loop correctamente (multi-turn)
    Solo cuando el usuario lo confirma
 ══════════════════════════════════════ */
 async function libRealtimeSearch(query){
-  if(!CFG?.ak)return null;
+  if(!CFG?.ak) return null;
   try{
-    const resp=await fetch('https://api.anthropic.com/v1/messages',{
-      method:'POST',
-      headers:{'Content-Type':'application/json','x-api-key':CFG.ak,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},
-      body:JSON.stringify({
-        model:'claude-haiku-4-5-20251001',max_tokens:1200,
-        tools:[{type:'web_search_20250305',name:'web_search'}],
-        messages:[{role:'user',content:`Busca información actualizada sobre proximorol.com relacionada con: ${query}
-Enfócate en contenido publicado recientemente, páginas indexadas, posicionamiento SEO actual.
-Devuelve un resumen en texto plano, máximo 400 palabras, con los datos más relevantes.`}]
-      })
-    });
-    if(!resp.ok)return null;
-    const data=await resp.json();
-    return(data.content||[]).filter(b=>b.type==='text').map(b=>b.text).join('').trim()||null;
-  }catch(_){return null;}
+    /* Intento 1: CORS proxy para datos frescos de la homepage */
+    const homeText = await libFetchHtml('https://www.proximorol.com/').catch(()=>null);
+    if(homeText){
+      const prompt = `Contexto actual del sitio proximorol.com:\n${homeText.slice(0,3000)}\n\nPregunta específica: ${query}\n\nResponde en español con lo más relevante, máximo 300 palabras.`;
+      const data = await antFetch({ model:'claude-haiku-4-5-20251001', max_tokens:500, messages:[{role:'user',content:prompt}] });
+      const text = (data.content||[]).filter(b=>b.type==='text').map(b=>b.text).join('').trim();
+      if(text) return text;
+    }
+    /* Fallback: responder solo con conocimiento del modelo */
+    return null;
+  }catch(_){ return null; }
 }
 
 /* ══════════════════════════════════════
