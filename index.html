@@ -69,6 +69,35 @@
         <div style="margin-top:.75rem;display:flex;gap:8px"><button class="btn-s" onclick="savePF('li')">Save</button><button class="btn-c" onclick="clearPF('li')">Remove</button></div>
       </div>
     </div>
+    <div class="pc" id="pc-meta">
+      <div class="ph" onclick="tpf('meta')">
+        <div class="pi" style="background:#FFF0F9">📸</div>
+        <div style="flex:1"><div class="pn">Instagram / Facebook</div><div class="pno">Métricas · Publicación automática · Access Token</div></div>
+        <span class="sp sp-sk" id="pp-meta">Optional</span>
+        <svg class="chv" id="cv-meta" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg>
+      </div>
+      <div class="pb" id="pb-meta">
+        <div class="fl">
+          <label class="fl-l">Access Token</label>
+          <input class="fi" id="i-metatoken" placeholder="EAAxxxxxxx…"/>
+          <div class="fh"><a href="https://developers.facebook.com/tools/explorer" target="_blank">Graph API Explorer</a> → Selecciona "Proximorol Dashboard" → "Generate Access Token"</div>
+        </div>
+        <div class="fl">
+          <label class="fl-l">Instagram Account ID</label>
+          <input class="fi" id="i-metaigid" placeholder="17841439267939398"/>
+          <div class="fh">Tu Instagram Business Account ID</div>
+        </div>
+        <div class="fl" style="margin-bottom:0">
+          <label class="fl-l">Facebook Page ID <span style="font-weight:400;color:var(--ht)">(opcional)</span></label>
+          <input class="fi" id="i-metapageid" placeholder="1092607287263365"/>
+          <div class="fh">ID de tu página de Facebook — para métricas de Facebook</div>
+        </div>
+        <div style="margin-top:.75rem;display:flex;gap:8px">
+          <button class="btn-s" onclick="saveMeta()">Save</button>
+          <button class="btn-c" onclick="clearMeta()">Remove</button>
+        </div>
+      </div>
+    </div>
     <div class="pc" id="pc-inst">
       <div class="ph" onclick="tpf('inst')">
         <div class="pi" style="background:#F5F3FF">⚡</div>
@@ -137,7 +166,7 @@
       <div class="ns" style="margin-top:6px">Social & Redes</div>
       <div class="ni" onclick="showP('li',this)"><div class="nico">💼</div>LinkedIn<span class="nb nb-off" id="nb-li">—</span></div>
       <div class="ni" onclick="showP('inst',this)"><div class="nico">📧</div>Mailing masivo<span class="nb nb-off" id="nb-inst">—</span></div>
-      <div class="ni" style="opacity:.45;cursor:default"><div class="nico">📸</div>Instagram<span class="nb nb-pend">Pronto</span></div>
+      <div class="ni" onclick="showP('ig',this)"><div class="nico">📸</div>Instagram / Facebook<span class="nb nb-off" id="nb-ig">—</span></div>
       <div class="ni" style="opacity:.45;cursor:default"><div class="nico">🎬</div>YouTube<span class="nb nb-pend">Pronto</span></div>
       <div class="ni" style="opacity:.45;cursor:default"><div class="nico">🎵</div>TikTok<span class="nb nb-pend">Pronto</span></div>
       <div class="ns" style="margin-top:6px">CRM & Pipeline</div>
@@ -1021,6 +1050,20 @@
   <div id="guide-main"></div>
 </div>
 
+<div class="page" id="page-ig">
+  <div class="sh">
+    <span class="sl">Instagram / Facebook</span>
+    <div class="sln"></div>
+  </div>
+  <div id="ig-main">
+    <div class="notice">
+      <strong>Instagram no conectado</strong>
+      Añade tu token y cuenta de Instagram en Settings para ver las métricas.
+      <button class="cbtn" onclick="showP('settings',null)">Abrir Settings →</button>
+    </div>
+  </div>
+</div>
+
 <div class="page" id="page-settings">
       <div class="sh"><span class="sl">Platform Connections</span><div class="sln"></div><button class="info-btn" onclick="openInfoModal('settings')" title="What is this page?">i</button></div>
       <p style="font-size:13px;color:var(--mt);margin-bottom:1.25rem">Add or update credentials anytime. Changes take effect immediately.</p>
@@ -1081,6 +1124,7 @@
 <script src="js/audit.js"></script>
 <script src="js/prospecting.js"></script>
 <script src="js/guide.js"></script>
+<script src="js/instagram.js"></script>
 <script>init();</script>
 </body>
 </html>
