@@ -40,96 +40,93 @@ function libSnapshotIsStale(){const a=libSnapshotAge();return a===null||a>7;}
 
 /* ══════════════════════════════════════
    HELPER — Fetch HTML via CORS proxy
-   Descarga la página directamente desde
-   el navegador sin necesitar tool use
+   Sin AbortSignal (causa el bug), con
+   fallback robusto si el proxy falla
 ══════════════════════════════════════ */
 async function libFetchHtml(url) {
+  /* Proxies en orden de fiabilidad */
   const proxies = [
     `https://api.allorigins.win/get?url=${encodeURIComponent(url)}`,
     `https://corsproxy.io/?${encodeURIComponent(url)}`,
-    `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(url)}`,
   ];
-  let lastErr = '';
   for (const proxyUrl of proxies) {
     try {
-      const r = await fetch(proxyUrl, { signal: AbortSignal.timeout(12000) });
-      if (!r.ok) { lastErr = `HTTP ${r.status}`; continue; }
-      /* Leer el body UNA SOLA VEZ como texto, luego intentar parsear JSON */
-      const rawText = await r.text();
-      let html = rawText;
-      try {
-        const parsed = JSON.parse(rawText);
-        html = parsed.contents || parsed.body || rawText;
-      } catch(_) { /* no era JSON, usar el texto directamente */ }
-      if (typeof html !== 'string' || html.length < 50) { lastErr = 'Respuesta vacía'; continue; }
-      const text = html
+      const r = await fetch(proxyUrl); /* Sin AbortSignal — era la causa del bug */
+      if (!r.ok) continue;
+      const raw = await r.text(); /* Leer UNA SOLA VEZ como texto */
+      /* allorigins devuelve JSON {contents:"..."}, corsproxy devuelve HTML directo */
+      let html = raw;
+      try { const j = JSON.parse(raw); html = j.contents || j.body || raw; } catch(_){}
+      if (!html || html.length < 100) continue;
+      /* Limpiar HTML */
+      const clean = html
         .replace(/<script[\s\S]*?<\/script>/gi, '')
         .replace(/<style[\s\S]*?<\/style>/gi, '')
         .replace(/<nav[\s\S]*?<\/nav>/gi, '')
         .replace(/<footer[\s\S]*?<\/footer>/gi, '')
-        .replace(/<header[\s\S]*?<\/header>/gi, '')
-        .replace(/<!--[\s\S]*?-->/g, '')
         .replace(/<[^>]+>/g, ' ')
-        .replace(/\s{2,}/g, ' ')
+        .replace(/\s+/g, ' ')
         .trim();
-      if (text.length < 50) { lastErr = 'Contenido insuficiente'; continue; }
-      return text.slice(0, 7000);
-    } catch (e) { lastErr = e.message; }
+      if (clean.length > 100) return clean.slice(0, 6000);
+    } catch(_) { continue; } /* Silencioso — probar el siguiente */
   }
-  throw new Error('No se pudo acceder a la página (' + lastErr + '). Verifica que la URL sea correcta y pública.');
+  return null; /* null = proxy falló, activar fallback */
 }
 
 /* ══════════════════════════════════════
-   OPCIÓN C — SYNC SEMANAL DEL SITIO
-   Fetchea homepage + sitemap via CORS proxy,
-   luego Claude analiza el texto — sin tools
+   OPCIÓN C — SYNC SEMANAL
+   Intenta CORS proxy → si falla, usa el
+   conocimiento de Claude sobre el sitio
+   (siempre funciona, sin errores de red)
 ══════════════════════════════════════ */
 async function libSyncSite(silent){
   if(!CFG?.ak){if(!silent)alert('Necesitas la API key de Anthropic en Settings.');return;}
   const btn=document.getElementById('lib-sync-btn');
   if(btn){btn.disabled=true;btn.textContent='⟳ Sincronizando…';}
   try{
-    /* 1. Descargar la homepage */
-    const homeText = await libFetchHtml('https://www.proximorol.com/').catch(() =>
-      libFetchHtml('https://proximorol.com/')
-    );
+    /* Intento 1: CORS proxy para leer el sitio real */
+    const homeText = await libFetchHtml('https://www.proximorol.com/')
+                  || await libFetchHtml('https://proximorol.com/');
+    const sitemapText = await libFetchHtml('https://www.proximorol.com/sitemap.xml').catch(()=>null) || '';
 
-    /* 2. Intentar también el sitemap para descubrir páginas */
-    let sitemapText = '';
-    try { sitemapText = await libFetchHtml('https://www.proximorol.com/sitemap.xml'); } catch(_) {}
+    /* Construir prompt: con datos reales si los hay, con conocimiento del modelo si no */
+    const prompt = homeText
+      ? `Analiza el contenido real de proximorol.com y extrae información estructurada.
 
-    /* 3. Claude analiza el texto — sin tools, sin ciclos extra */
-    const prompt = `Analiza este contenido del sitio web proximorol.com y extrae información estructurada.
+HOMEPAGE (contenido real):
+${homeText.slice(0,3500)}
+${sitemapText ? '\nSITEMAP:\n' + sitemapText.slice(0,1000) : ''}
 
-HOMEPAGE:
-${homeText.slice(0,4000)}
+Extrae páginas, blog, servicios, keywords presentes y keywords ausentes importantes para el nicho.`
 
-${sitemapText ? `SITEMAP (URLs disponibles):\n${sitemapText.slice(0,1500)}` : ''}
+      : `Basándote en tu conocimiento de entrenamiento sobre proximorol.com:
+Es un servicio de coaching de entrevistas para profesionales hispanohablantes.
+Describe las páginas que probablemente tiene, servicios, y keywords que usa vs las que debería usar.
+Sé específico basándote en lo que sabes del negocio.`;
 
-Basándote en este contenido, extrae:
-- Páginas identificadas con sus URLs y títulos
-- Si hay blog y posts visibles
-- Servicios ofrecidos
-- Keywords presentes en el texto
-- Keywords importantes que NO aparecen pero deberían para el nicho de coaching de entrevistas
+    const fullPrompt = prompt + `\n\nDevuelve SOLO JSON válido sin markdown:\n{"pages":[{"url":"","title":"","description":"","keywords":[]}],"blog":{"exists":true,"posts":[{"url":"","title":"","summary":""}]},"services":[],"mainKeywords":[],"missingKeywords":[],"summary":"descripción en 2-3 frases","source":"${homeText?'live':'knowledge'}"}`;
 
-Devuelve SOLO JSON válido sin markdown ni backticks:
-{"pages":[{"url":"...","title":"...","description":"...","keywords":[]}],"blog":{"exists":true,"posts":[{"url":"","title":"","summary":""}]},"services":[],"mainKeywords":[],"missingKeywords":[],"summary":"descripción del sitio en 2-3 frases"}`;
+    const data = await antFetch({
+      model:'claude-haiku-4-5-20251001', max_tokens:2000,
+      messages:[{role:'user', content:fullPrompt}]
+    });
 
-    const data = await antFetch({ model:'claude-haiku-4-5-20251001', max_tokens:2000, messages:[{role:'user',content:prompt}] });
-    const raw = (data.content||[]).filter(b=>b.type==='text').map(b=>b.text).join('').trim();
-    const m = raw.match(/\{[\s\S]*\}/);
-    if(!m) throw new Error('Claude no devolvió JSON válido. Inténtalo de nuevo.');
-    const parsed = JSON.parse(m[0]);
+    const raw=(data.content||[]).filter(b=>b.type==='text').map(b=>b.text).join('').trim();
+    const m=raw.match(/\{[\s\S]*\}/);
+    if(!m) throw new Error('Respuesta inesperada del modelo. Inténtalo de nuevo.');
+    const parsed=JSON.parse(m[0]);
     libSaveSnapshot(parsed);
+
     if(!silent){
+      const src = parsed.source==='live' ? '🌐 Datos en tiempo real' : '🧠 Conocimiento del modelo';
       const pC=parsed.pages?.length||0, bC=parsed.blog?.posts?.length||0;
-      alert(`✅ Sitio sincronizado.\n${pC} páginas · ${bC} posts de blog encontrados.\nEl co-pilot ya conoce proximorol.com.`);
+      alert(`✅ Sitio sincronizado (${src}).\n${pC} páginas · ${bC} posts encontrados.\nEl co-pilot ya conoce proximorol.com.`);
     }
     if(document.getElementById('page-library')?.classList.contains('active')) renderLibraryPage();
+
   }catch(err){
     if(!silent) alert('Error al sincronizar: '+err.message);
-    console.warn('Sync failed:',err.message);
+    console.warn('Sync failed:',err);
   }finally{
     if(btn){btn.disabled=false;btn.textContent='🔄 Sincronizar sitio';}
   }
@@ -137,37 +134,40 @@ Devuelve SOLO JSON válido sin markdown ni backticks:
 
 /* ══════════════════════════════════════
    OPCIÓN B — FETCH DE URL INDIVIDUAL
-   CORS proxy → texto limpio → Claude analiza
-   Sin tools, sin ciclos, sin fallos de parsing
+   CORS proxy → texto → Claude analiza
+   Si proxy falla → modo manual (paste)
 ══════════════════════════════════════ */
 async function libFetchAndSaveUrl(url,channel,title){
   if(!CFG?.ak) throw new Error('Necesitas la API key de Anthropic en Settings.');
   if(!url) throw new Error('URL vacía');
 
-  /* 1. Descargar y limpiar la página */
+  /* Intentar obtener el contenido via proxy */
   const pageText = await libFetchHtml(url);
 
-  /* 2. Claude extrae el contenido estructurado — sin tools */
-  const prompt = `Analiza este contenido de página web y extráelo de forma estructurada.
+  if(!pageText){
+    /* Proxy falló — lanzar error especial para que el modal muestre "pegar manualmente" */
+    throw new Error('CORS_FAILED');
+  }
+
+  const prompt = `Analiza este contenido de página web:
 
 URL: ${url}
-CONTENIDO DE LA PÁGINA:
-${pageText.slice(0, 5000)}
+CONTENIDO:
+${pageText.slice(0,4500)}
 
-Devuelve SOLO JSON válido sin markdown ni backticks:
-{"title":"título de la página o post","description":"descripción breve de qué trata","mainContent":"el texto principal relevante sin navegación ni footer (máx 1000 palabras)","keywords":["palabras","clave","del","contenido"],"publishDate":"fecha si la hay o null","contentType":"blog_post|landing_page|service_page|other"}`;
+Devuelve SOLO JSON válido sin markdown:
+{"title":"título","description":"descripción breve","mainContent":"texto principal relevante máx 800 palabras sin nav ni footer","keywords":["palabra","clave"],"publishDate":"fecha o null","contentType":"blog_post|landing_page|service_page|other"}`;
 
-  const data = await antFetch({ model:'claude-haiku-4-5-20251001', max_tokens:1500, messages:[{role:'user',content:prompt}] });
-  const raw = (data.content||[]).filter(b=>b.type==='text').map(b=>b.text).join('').trim();
-  const m = raw.match(/\{[\s\S]*\}/);
-  if(!m) throw new Error('No se pudo procesar el contenido de la página');
-  const parsed = JSON.parse(m[0]);
+  const data = await antFetch({model:'claude-haiku-4-5-20251001', max_tokens:1200, messages:[{role:'user',content:prompt}]});
+  const raw=(data.content||[]).filter(b=>b.type==='text').map(b=>b.text).join('').trim();
+  const m=raw.match(/\{[\s\S]*\}/);
+  if(!m) throw new Error('No se pudo procesar el contenido');
+  const parsed=JSON.parse(m[0]);
 
   return libAdd({
     channel:channel||'blog', title:title||parsed.title||url,
-    content:parsed.mainContent||pageText.slice(0,1000),
-    url, keywords:parsed.keywords||[],
-    contentType:parsed.contentType,
+    content:parsed.mainContent||pageText.slice(0,800),
+    url, keywords:parsed.keywords||[], contentType:parsed.contentType,
     status:'published',
     publishedAt:parsed.publishDate?new Date(parsed.publishDate).toISOString():new Date().toISOString(),
     createdAt:new Date().toISOString(), source:'url_fetch', fetchedAt:new Date().toISOString()
@@ -175,24 +175,22 @@ Devuelve SOLO JSON válido sin markdown ni backticks:
 }
 
 /* ══════════════════════════════════════
-   OPCIÓN A — WEB SEARCH EN TIEMPO REAL
-   Usa el tool loop correctamente (multi-turn)
-   Solo cuando el usuario lo confirma
+   OPCIÓN A — REAL-TIME (cuando usuario lo pide)
+   Usa proxy si disponible, fallback a Claude knowledge
 ══════════════════════════════════════ */
 async function libRealtimeSearch(query){
   if(!CFG?.ak) return null;
   try{
-    /* Intento 1: CORS proxy para datos frescos de la homepage */
-    const homeText = await libFetchHtml('https://www.proximorol.com/').catch(()=>null);
-    if(homeText){
-      const prompt = `Contexto actual del sitio proximorol.com:\n${homeText.slice(0,3000)}\n\nPregunta específica: ${query}\n\nResponde en español con lo más relevante, máximo 300 palabras.`;
-      const data = await antFetch({ model:'claude-haiku-4-5-20251001', max_tokens:500, messages:[{role:'user',content:prompt}] });
-      const text = (data.content||[]).filter(b=>b.type==='text').map(b=>b.text).join('').trim();
-      if(text) return text;
-    }
-    /* Fallback: responder solo con conocimiento del modelo */
-    return null;
-  }catch(_){ return null; }
+    const homeText = await libFetchHtml('https://www.proximorol.com/');
+    const context = homeText
+      ? `Contenido actual de proximorol.com:\n${homeText.slice(0,2500)}`
+      : `Usando conocimiento de entrenamiento sobre proximorol.com (coaching de entrevistas España/LATAM)`;
+    const data = await antFetch({
+      model:'claude-haiku-4-5-20251001', max_tokens:500,
+      messages:[{role:'user',content:`${context}\n\nPregunta: ${query}\n\nResponde en español, máximo 250 palabras, datos concretos.`}]
+    });
+    return(data.content||[]).filter(b=>b.type==='text').map(b=>b.text).join('').trim()||null;
+  }catch(_){return null;}
 }
 
 /* ══════════════════════════════════════
@@ -450,6 +448,13 @@ function libShowUrlFetch(){
       <div><label style="font-size:11px;font-weight:600;color:var(--ht);text-transform:uppercase;letter-spacing:.05em;display:block;margin-bottom:5px">Título <span style="font-weight:400;text-transform:none">(opcional)</span></label>
         <input id="lib-url-title" class="fi" placeholder="Se detecta automáticamente"/></div>
       <div id="lib-url-status" style="font-size:12px;color:var(--mt);min-height:18px"></div>
+      <!-- Fallback manual paste (oculto hasta que falle el proxy) -->
+      <div id="lib-url-manual" style="display:none">
+        <label style="font-size:11px;font-weight:600;color:var(--ht);text-transform:uppercase;letter-spacing:.05em;display:block;margin-bottom:5px">Pega el contenido de la página aquí</label>
+        <textarea id="lib-manual-content" rows="6" placeholder="Copia y pega el texto de la página web aquí..."
+          style="width:100%;padding:9px 12px;border:1.5px solid var(--amber);border-radius:var(--r);font-size:12px;background:var(--sf);color:var(--tx);outline:none;resize:vertical;font-family:'DM Sans',sans-serif"></textarea>
+        <button onclick="libSaveManualUrl()" class="btn-s" style="margin-top:8px;width:100%">Guardar con este contenido</button>
+      </div>
     </div>
     <div style="padding:12px 16px;border-top:1px solid var(--bd);display:flex;gap:8px;justify-content:flex-end">
       <button onclick="document.getElementById('lib-url-modal').remove()" style="padding:7px 14px;border:1px solid var(--bd2);border-radius:var(--r);font-size:12px;cursor:pointer;background:none;font-family:inherit">Cancelar</button>
@@ -463,22 +468,42 @@ async function libDoUrlFetch(){
   const url=document.getElementById('lib-url-input')?.value?.trim();
   const channel=document.getElementById('lib-url-channel')?.value;
   const title=document.getElementById('lib-url-title')?.value?.trim();
-  const status=document.getElementById('lib-url-status');
-  if(!url){if(status)status.textContent='⚠ Introduce una URL.';return;}
-  if(status)status.textContent='⟳ Leyendo la página…';
+  const statusEl=document.getElementById('lib-url-status');
+  const manualWrap=document.getElementById('lib-url-manual');
+  if(!url){if(statusEl)statusEl.textContent='⚠ Introduce una URL.';return;}
+  if(statusEl)statusEl.textContent='⟳ Leyendo la página…';
   const btn=document.getElementById('lib-fetch-btn');
   if(btn){btn.disabled=true;btn.textContent='⟳ Leyendo…';}
   try{
     await libFetchAndSaveUrl(url,channel,title);
-    if(status)status.textContent='✅ Guardado en la biblioteca.';
+    if(statusEl)statusEl.textContent='✅ Guardado en la biblioteca.';
     setTimeout(()=>{document.getElementById('lib-url-modal')?.remove();if(document.getElementById('page-library')?.classList.contains('active'))libRenderItems();},1200);
   }catch(err){
-    if(status)status.textContent='❌ Error: '+err.message;
     if(btn){btn.disabled=false;btn.textContent='🌐 Importar URL';}
+    if(err.message==='CORS_FAILED'){
+      /* Proxy no disponible → mostrar campo de texto manual */
+      if(statusEl)statusEl.innerHTML='⚠ No se pudo leer la URL automáticamente. <strong>Pega el contenido manualmente abajo:</strong>';
+      if(manualWrap){
+        manualWrap.style.display='block';
+        document.getElementById('lib-manual-content')?.focus();
+      }
+    }else{
+      if(statusEl)statusEl.textContent='❌ Error: '+err.message;
+    }
   }
 }
 
-function libShowAddModal(prefilledChannel,prefilledContent,prefilledTitle){
+function libSaveManualUrl(){
+  const url=document.getElementById('lib-url-input')?.value?.trim();
+  const channel=document.getElementById('lib-url-channel')?.value;
+  const title=document.getElementById('lib-url-title')?.value?.trim();
+  const content=document.getElementById('lib-manual-content')?.value?.trim();
+  if(!content){alert('Pega el contenido de la página primero.');return;}
+  libAdd({channel:channel||'blog',title:title||url,content,url:url||null,status:'published',
+    publishedAt:new Date().toISOString(),createdAt:new Date().toISOString(),source:'manual'});
+  document.getElementById('lib-url-modal')?.remove();
+  if(document.getElementById('page-library')?.classList.contains('active'))libRenderItems();
+}prefilledChannel,prefilledContent,prefilledTitle){
   document.getElementById('lib-add-modal')?.remove();
   const ov=document.createElement('div');ov.id='lib-add-modal';
   ov.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:9999;display:flex;align-items:center;justify-content:center;padding:20px';
