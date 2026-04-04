@@ -378,27 +378,10 @@ function rvExportMonthly() {
 
 (function rvInit() {
   function injectReviewPage() {
-    /* 1. Nav item en sección Planning */
-    const nav = document.querySelector('.sb-nav');
-    if (nav) {
-      const planningItems = Array.from(nav.querySelectorAll('.ni'))
-        .find(el => el.textContent.includes('P&L') || el.textContent.includes('Budget'));
-      if (planningItems) {
-        const rvNav = document.createElement('div');
-        rvNav.className = 'ni';
-        rvNav.setAttribute('onclick', "showP('review', this)");
-        rvNav.innerHTML = `<div class="nico">📅</div>Revisión periódica<span class="nb" style="background:#F5F3FF;color:#7C3AED">Weekly</span>`;
-        planningItems.insertAdjacentElement('afterend', rvNav);
-      }
-    }
+    /* Nav and page-review are already in index.html — just populate the content */
+    const page = document.getElementById('page-review');
+    if (!page) return;
 
-    /* 2. Página */
-    const main = document.querySelector('.main');
-    if (!main) return;
-
-    const page = document.createElement('div');
-    page.className = 'page';
-    page.id = 'page-review';
     page.innerHTML = `
       <div class="sh">
         <span class="sl">Revisión periódica</span>
@@ -442,12 +425,9 @@ function rvExportMonthly() {
         <div id="rv-history" style="padding:4px 0"></div>
       </div>`;
 
-    const lastPage = main.querySelector('.page:last-of-type');
-    if (lastPage) lastPage.insertAdjacentElement('afterend', page);
-    else main.appendChild(page);
-
     if (typeof TITLES !== 'undefined') TITLES['review'] = 'Revisión periódica';
 
+    /* Hook showP to trigger history render */
     const origShowP = window.showP;
     window.showP = function(id, el) {
       origShowP.apply(this, arguments);
@@ -463,3 +443,5 @@ function rvExportMonthly() {
     setTimeout(injectReviewPage, 300);
   }
 })();
+
+

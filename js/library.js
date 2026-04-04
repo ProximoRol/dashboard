@@ -587,17 +587,21 @@ function libSaveFromStudio(status){
   const s=document.createElement('style');
   s.textContent=`.lib-tab{padding:6px 13px;border:1px solid var(--bd2);border-radius:20px;font-size:12px;cursor:pointer;background:var(--sf2);color:var(--mt);white-space:nowrap;font-family:'DM Sans',sans-serif;transition:all .12s;display:inline-flex;align-items:center;gap:4px}.lib-tab:hover{border-color:var(--green);color:var(--green)}.lib-tab.active{background:var(--gp);color:var(--green);border-color:var(--green);font-weight:500}.lib-tab-count{font-size:10px;padding:1px 5px;border-radius:10px;background:rgba(0,0,0,.08);font-weight:600}.lib-card{background:var(--sf);border:1px solid var(--bd);border-radius:var(--rl);padding:12px;transition:border-color .12s}.lib-card:hover{border-color:var(--bd2)}`;
   document.head.appendChild(s);
-  function inject(){
-    const nav=document.querySelector('.sb-nav');
-    if(nav){const cs=Array.from(nav.querySelectorAll('.ns')).find(el=>el.textContent.includes('Content'));
-      if(cs){const ni=document.createElement('div');ni.className='ni';ni.setAttribute('onclick',"showP('library',this)");ni.innerHTML=`<div class="nico">📚</div>Biblioteca<span class="nb" style="background:#EFF6FF;color:#2563EB">Nueva</span>`;cs.insertAdjacentElement('afterend',ni);}}
-    const main=document.querySelector('.main');
-    if(main){const page=document.createElement('div');page.className='page';page.id='page-library';const last=main.querySelector('.page:last-of-type');if(last)last.insertAdjacentElement('afterend',page);else main.appendChild(page);}
-    if(typeof TITLES!=='undefined')TITLES['library']='Biblioteca de contenido';
+
+  function init(){
+    /* page-library and nav item are already in index.html */
+    if(typeof TITLES!=='undefined') TITLES['library']='Biblioteca de contenido';
+
+    /* Hook showP to trigger render when user navigates to library */
     const orig=window.showP;
-    window.showP=function(id,el){orig.apply(this,arguments);if(id==='library')requestAnimationFrame(()=>requestAnimationFrame(()=>renderLibraryPage()));};
+    window.showP=function(id,el){
+      orig.apply(this,arguments);
+      if(id==='library') requestAnimationFrame(()=>requestAnimationFrame(()=>renderLibraryPage()));
+    };
+
     libInjectIntoContentStudio();
   }
-  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',inject);
-  else setTimeout(inject,400);
+
+  if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',init);
+  else setTimeout(init,400);
 })();

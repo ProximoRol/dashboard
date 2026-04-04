@@ -359,26 +359,10 @@ Sé directo. En español. Sin introducción.`;
 
 (function pnlInit() {
   function injectPNLPage() {
-    /* 1. Añadir nav item */
-    const nav = document.querySelector('.sb-nav');
-    if (nav) {
-      const planningSection = Array.from(nav.querySelectorAll('.ns')).find(el => el.textContent.includes('Planning'));
-      if (planningSection) {
-        const pnlNav = document.createElement('div');
-        pnlNav.className = 'ni';
-        pnlNav.setAttribute('onclick', "showP('pnl', this)");
-        pnlNav.innerHTML = `<div class="nico">💹</div>P&L · Revenue<span class="nb nb-live">P&L</span>`;
-        planningSection.insertAdjacentElement('afterend', pnlNav);
-      }
-    }
+    /* page-pnl and nav item are already in index.html */
+    const page = document.getElementById('page-pnl');
+    if (!page) return;
 
-    /* 2. Añadir página */
-    const main = document.querySelector('.main');
-    if (!main) return;
-
-    const page = document.createElement('div');
-    page.className = 'page';
-    page.id = 'page-pnl';
     page.innerHTML = `
       <div class="sh">
         <span class="sl">P&amp;L — Profit &amp; Loss</span>
@@ -386,13 +370,8 @@ Sé directo. En español. Sin introducción.`;
         <button id="pnl-ai-btn" onclick="pnlAIAnalysis()" style="padding:5px 14px;background:var(--pp);color:var(--purple);border:1px solid #DDD6FE;border-radius:var(--r);font-size:12px;font-weight:500;cursor:pointer;font-family:inherit">✦ Análisis IA</button>
       </div>
 
-      <!-- AI commentary -->
       <div id="pnl-ai-box" style="display:none;background:var(--pp);border:1px solid #DDD6FE;border-radius:var(--r);padding:14px 16px;margin-bottom:14px"></div>
-
-      <!-- KPIs YTD -->
       <div class="kr" id="pnl-kpis" style="margin-bottom:16px"></div>
-
-      <!-- Month selector -->
       <div style="display:flex;align-items:center;gap:8px;margin-bottom:14px;flex-wrap:wrap">
         <span style="font-size:11px;font-weight:600;color:var(--ht);text-transform:uppercase;letter-spacing:.05em">Mes:</span>
         <div class="dps" id="pnl-month-tabs"></div>
@@ -404,8 +383,6 @@ Sé directo. En español. Sin introducción.`;
           <span id="pnl-cogs-val" style="font-size:12px;font-weight:600;color:var(--tx);min-width:28px">5%</span>
         </div>
       </div>
-
-      <!-- Revenue input + P&L waterfall -->
       <div class="g2" style="margin-bottom:14px">
         <div class="cd">
           <div class="ch"><span class="ct">Revenue — ventas del mes</span><span class="bg bg-g">Manual · editable</span></div>
@@ -416,28 +393,17 @@ Sé directo. En español. Sin introducción.`;
           <div id="pnl-waterfall" style="padding:4px 0"></div>
         </div>
       </div>
-
-      <!-- Unit Economics -->
       <div class="cd" style="margin-bottom:14px">
         <div class="ch"><span class="ct">Unit Economics</span><span class="bg bg-p">CAC · LTV · Payback</span></div>
         <div id="pnl-unit-economics"></div>
       </div>
-
-      <!-- Monthly chart -->
       <div class="cd">
         <div class="ch"><span class="ct">Revenue vs OpEx vs EBITDA — mensual 2026</span><span class="bg bg-g">Todos los meses</span></div>
         <div style="position:relative;height:240px"><canvas id="pnl-chart"></canvas></div>
       </div>`;
 
-    /* Insertar antes del cierre del .main */
-    const mainContent = main.querySelector('.page:last-of-type');
-    if (mainContent) mainContent.insertAdjacentElement('afterend', page);
-    else main.appendChild(page);
-
-    /* 3. Registrar en TITLES */
     if (typeof TITLES !== 'undefined') TITLES['pnl'] = 'P&L — Profit & Loss';
 
-    /* 4. Registrar en showP para que renderice al navegar */
     const origShowP = window.showP;
     window.showP = function(id, el) {
       origShowP.apply(this, arguments);
