@@ -29,6 +29,7 @@ async function loadInstagram() {
   if (!el) return;
   el.innerHTML = `<div class="ld"><div class="sp2"></div>Cargando datos de Instagram…</div>`;
 
+
   try {
     // ── 1. PERFIL ──
     const profile = await metaFetch(`${igId}?fields=name,username,followers_count,follows_count,media_count,profile_picture_url,biography,website`);
@@ -72,6 +73,16 @@ async function loadInstagram() {
       : '—';
 
     el.innerHTML = `
+      <!-- Link rápido para renovar token -->
+      <div style="display:flex;justify-content:flex-end;margin-bottom:12px">
+        <a href="https://developers.facebook.com/tools/explorer" target="_blank" 
+           style="display:inline-flex;align-items:center;gap:6px;padding:6px 12px;border:1px solid var(--bd2);border-radius:var(--r);font-size:11px;color:var(--mt);text-decoration:none;background:var(--sf2)"
+           onmouseover="this.style.borderColor='var(--purple)';this.style.color='var(--purple)'" 
+           onmouseout="this.style.borderColor='var(--bd2)';this.style.color='var(--mt)'">
+          🔑 Renovar token Meta
+        </a>
+      </div>
+
       <!-- KPIs Instagram -->
       <div class="kr" style="margin-bottom:16px">
         ${kpi('📸', 'Seguidores IG', fmtK(profile.followers_count), '', 'var(--purple)')}
