@@ -40,7 +40,7 @@ const CK='eco_v3';
 const COLORS=['#1D9E75','#2563EB','#D97706','#DC2626','#7C3AED','#0891B2','#059669','#BE185D'];
 const TC='#A8A8AC',GC='rgba(0,0,0,0.05)';
 const MONTHS=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
-const TITLES={guide:'Guía del dashboard',ov:'Overview',report:'Monthly Report',ga4:'Google Analytics 4',gsc:'Search Console',ads:'Google Ads',kwi:'Keyword Intelligence',seo:'SEO Intelligence',li:'LinkedIn',inst:'Mailing masivo',opps:'Opportunities Pipeline',mon:'CRM',budget:'Budget & Costs',settings:'Settings',content:'Content Studio',audit:'Content Audit',prosp:'Prospecting — Alianzas universitarias'};
+const TITLES={guide:'Guía del dashboard',ov:'Overview',report:'Monthly Report',ga4:'Google Analytics 4',gsc:'Search Console',ads:'Google Ads',kwi:'Keyword Intelligence',seo:'SEO Intelligence',li:'LinkedIn',inst:'Mailing masivo',ig:'Instagram / Facebook',opps:'Opportunities Pipeline',mon:'CRM',budget:'Budget & Costs',settings:'Settings',content:'Content Studio',audit:'Content Audit',prosp:'Prospecting — Alianzas universitarias'};
 let CFG={},TOKEN=null;
 const CH={};
 
@@ -80,7 +80,7 @@ async function antFetch(body){
 function init(){
   const s=localStorage.getItem(CK);
   if(s)CFG=JSON.parse(s);
-  const m={clientId:'i-cid',ga4:'i-ga4',gsc:'i-gsc',ads:'i-ads',adsToken:'i-adstoken',liId:'i-liid',liOrg:'i-liorg',instantly:'i-inst',monday:'i-mon',hunter:'i-hunter'};
+  const m={clientId:'i-cid',ga4:'i-ga4',gsc:'i-gsc',ads:'i-ads',adsToken:'i-adstoken',liId:'i-liid',liOrg:'i-liorg',instantly:'i-inst',monday:'i-mon',hunter:'i-hunter',metaToken:'i-metatoken',metaIgId:'i-metaigid',metaPageId:'i-metapageid'};
   Object.entries(m).forEach(([k,id])=>{const el=document.getElementById(id);if(el&&CFG[k])el.value=CFG[k];});
   // Handle LinkedIn OAuth callback (code in URL after redirect)
   if(location.search.includes('code=')&&location.search.includes('state=')){
@@ -110,9 +110,11 @@ function savePF(id){
   sv();tpf(id);
 }
 function clearPF(id){const m={li:['liId','liOrg'],inst:['instantly'],mon:['monday']};(m[id]||[]).forEach(k=>CFG[k]='');sv();}
+function saveMeta(){CFG.metaToken=document.getElementById('i-metatoken')?.value.trim()||'';CFG.metaIgId=document.getElementById('i-metaigid')?.value.trim()||'';CFG.metaPageId=document.getElementById('i-metapageid')?.value.trim()||'';sv();tpf('meta');}
+function clearMeta(){CFG.metaToken='';CFG.metaIgId='';CFG.metaPageId='';sv();}
 function sv(){localStorage.setItem(CK,JSON.stringify(CFG));updOB();}
 function updOB(){
-  const pfs=[{id:'g',ok:!!(CFG.clientId&&CFG.ga4),lbl:CFG.clientId?'Configured':'Not set'},{id:'li',ok:!!(CFG.liId&&CFG.liOrg),lbl:CFG.liId?'Configured':'Optional'},{id:'inst',ok:!!CFG.instantly,lbl:CFG.instantly?'Configured':'Optional'},{id:'mon',ok:!!CFG.monday,lbl:CFG.monday?'Configured':'Optional'}];
+  const pfs=[{id:'g',ok:!!(CFG.clientId&&CFG.ga4),lbl:CFG.clientId?'Configured':'Not set'},{id:'li',ok:!!(CFG.liId&&CFG.liOrg),lbl:CFG.liId?'Configured':'Optional'},{id:'inst',ok:!!CFG.instantly,lbl:CFG.instantly?'Configured':'Optional'},{id:'mon',ok:!!CFG.monday,lbl:CFG.monday?'Configured':'Optional'},{id:'meta',ok:!!(CFG.metaToken&&CFG.metaIgId),lbl:(CFG.metaToken&&CFG.metaIgId)?'Configured':'Optional'}];
   let c=0;pfs.forEach(p=>{const pill=document.getElementById('pp-'+p.id);const card=document.getElementById('pc-'+p.id);if(pill){pill.textContent=p.lbl;pill.className='sp '+(p.ok?'sp-ok':'sp-sk');}if(card)card.classList.toggle('ok',p.ok);if(p.ok)c++;});
   document.getElementById('ob-cnt').textContent=c;const btn=document.getElementById('btn-l');const ok=c>0||(CFG.clientId&&CFG.ga4);btn.disabled=!ok;
 }
@@ -164,6 +166,8 @@ function showP(id,el){
     requestAnimationFrame(()=>{
       if(id==='ov'){
         renderOverview();
+      } else if(id==='ig'){
+        loadInstagram().catch(e=>{setNB('ig','err');console.error('Instagram:',e);});
       } else if(id==='guide'){
         renderGuidePage();
       } else if(id==='ga4'){
@@ -337,6 +341,11 @@ function loadAll(){
     nc('Monday.com','ov-opps');nc('Monday.com','opps-stages');
   }
   CFG.liId?loadLinkedIn().catch(()=>setNB('li','off')):(setNB('li','off'),nc('LinkedIn','ov-li'),nc('LinkedIn','li-kpis'));
+  if(CFG.metaToken&&CFG.metaIgId){
+    loadInstagram().catch(()=>setNB('ig','off'));
+  } else {
+    setNB('ig','off');
+  }
   if(!CFG.ads){
     setNB('ads','off');
     document.getElementById('ads-w').innerHTML='<div class="notice"><strong>Google Ads not connected</strong> — Add your Customer ID in Settings to enable this section.<button class="cbtn" onclick="showP(\'settings\',null)">Open Settings →</button></div>';
