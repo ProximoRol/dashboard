@@ -69,8 +69,7 @@ function pnlComputeMonth(m, data) {
     BGT_DATA.rows.forEach(row => {
       const actualKey = `${row.cat}|${row.name}|${m}`;
       const actualVal = parseFloat(actual[actualKey] || 0);
-      const budgVal   = row.vals[m] || 0;
-      opex_actual += actualVal > 0 ? actualVal : budgVal;
+      opex_actual += actualVal; /* Solo gastos reales — no usar presupuesto como fallback */
     });
   }
 
