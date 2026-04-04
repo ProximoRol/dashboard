@@ -716,6 +716,7 @@ function buildSettings(){
     {id:'inst',icon:'📧',name:'Mailing masivo (Instantly)',bg:'#F5F3FF',fields:[{k:'instantly',l:'API Key',ph:'inst_xxxxxxxxxxxx',hint:'<a href="https://app.instantly.ai/app/settings/integrations" target="_blank">Instantly</a> → API'}]},
     {id:'mon',icon:'🏢',name:'CRM / HubSpot / Monday',bg:'#ECFEFF',fields:[{k:'monday',l:'API Token',ph:'eyJhbGciOiJ…',hint:'<a href="https://monday.com/apps/manage/tokens" target="_blank">Monday</a> → Developers'}]},
     {id:'hunter',icon:'🎯',name:'Hunter.io — Prospecting universitario',bg:'#FFF7ED',fields:[{k:'hunter',l:'API Key',ph:'xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx',hint:'<a href="https://hunter.io/api-keys" target="_blank">hunter.io/api-keys</a> — Plan gratuito: 50 búsquedas/mes'}]},
+    {id:'meta',icon:'📸',name:'Instagram / Facebook',bg:'#FFF0F9',fields:[{k:'metaToken',l:'Access Token',ph:'EAAxxxxxxx…',hint:'<a href="https://developers.facebook.com/tools/explorer" target="_blank">Graph API Explorer</a> → Selecciona "Proximorol Dashboard" → Generate Access Token'},{k:'metaIgId',l:'Instagram Account ID',ph:'17841439267939398',hint:'Tu Instagram Business Account ID'},{k:'metaPageId',l:'Facebook Page ID (opcional)',ph:'1092607287263365',hint:'ID de tu página de Facebook — para métricas de Facebook'}]},
   ];
   document.getElementById('stg').innerHTML=pfs.map(pf=>{
     const conn=pf.id==='g'?!!(CFG.clientId&&CFG.ga4):pf.id==='anthropic'?!!CFG.ak:pf.fields.some(f=>CFG[f.k]);
@@ -725,12 +726,12 @@ function buildSettings(){
 }
 function tgS(id){const b=document.getElementById('sbd-'+id);const c=document.getElementById('sch-'+id);const o=b.classList.toggle('op');if(c)c.style.transform=o?'rotate(90deg)':'';}
 function svS(id){
-  const m={anthropic:{ak:'sf-ak'},g:{clientId:'sf-clientId',ga4:'sf-ga4',gsc:'sf-gsc',ads:'sf-ads',adsToken:'sf-adsToken'},li:{liId:'sf-liId',liSecret:'sf-liSecret',liOrg:'sf-liOrg',liToken:'sf-liToken'},inst:{instantly:'sf-instantly'},mon:{monday:'sf-monday'},hunter:{hunter:'sf-hunter'}};
+  const m={anthropic:{ak:'sf-ak'},g:{clientId:'sf-clientId',ga4:'sf-ga4',gsc:'sf-gsc',ads:'sf-ads',adsToken:'sf-adsToken'},li:{liId:'sf-liId',liSecret:'sf-liSecret',liOrg:'sf-liOrg',liToken:'sf-liToken'},inst:{instantly:'sf-instantly'},mon:{monday:'sf-monday'},hunter:{hunter:'sf-hunter'},meta:{metaToken:'sf-metaToken',metaIgId:'sf-metaIgId',metaPageId:'sf-metaPageId'}};
   Object.entries(m[id]||{}).forEach(([k,eid])=>{const el=document.getElementById(eid);if(el){let v=el.value.trim();if(k==='ga4'&&v&&!v.startsWith('properties/'))v='properties/'+v;CFG[k]=v;}});
   localStorage.setItem(CK,JSON.stringify(CFG));buildSettings();loadAll();tgS(id);
   const t=document.createElement('div');t.className='toast';t.textContent='✓ Guardado — recargando datos';document.body.appendChild(t);setTimeout(()=>t.remove(),2500);
 }
-function clrS(id){const m={anthropic:['ak'],g:['clientId','ga4','gsc','ads'],li:['liId','liSecret','liOrg','liToken'],inst:['instantly'],mon:['monday'],hunter:['hunter']};(m[id]||[]).forEach(k=>CFG[k]='');localStorage.setItem(CK,JSON.stringify(CFG));buildSettings();loadAll();}
+function clrS(id){const m={anthropic:['ak'],g:['clientId','ga4','gsc','ads'],li:['liId','liSecret','liOrg','liToken'],inst:['instantly'],mon:['monday'],hunter:['hunter'],meta:['metaToken','metaIgId','metaPageId']};(m[id]||[]).forEach(k=>CFG[k]='');localStorage.setItem(CK,JSON.stringify(CFG));buildSettings();loadAll();}
 
 
 /* ── MONTHLY REPORT ── */
