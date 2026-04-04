@@ -18,10 +18,10 @@ const CP_SUGGESTION_BANK = {
     { icon:'📋', text:'Dame un plan de 30 días para arrancar Próximo Rol' },
     { icon:'✍️', text:'Escribe mi primer post de LinkedIn como coach de entrevistas' },
     { icon:'🔑', text:'¿Qué keywords tengo que atacar primero en SEO?' },
+    { icon:'🌐', text:'Analiza mi sitio web y dime qué le falta para SEO' },
     { icon:'📧', text:'Escribe una secuencia de 3 emails de bienvenida para leads' },
     { icon:'🎯', text:'¿Cómo estructuro mi funnel de ventas desde cero?' },
     { icon:'💡', text:'¿Qué hace bien la competencia que yo debería copiar?' },
-    { icon:'📞', text:'¿Cómo convierto una primera consulta en venta?' },
   ],
   noLinkedIn: [
     { icon:'💼', text:'¿Cómo conecto LinkedIn al dashboard y por qué me urge?' },
@@ -225,10 +225,12 @@ function cpGatherContext() {
   else if (score <= 8)  ctx.etapaNegocio = 'crecimiento';
   else                  ctx.etapaNegocio = 'optimizacion';
 
+  /* ── Biblioteca de contenido (si existe) ── */
+  const libCtx = typeof libBuildCopilotContext === 'function' ? libBuildCopilotContext() : null;
+  ctx._libCtx = libCtx;
+
   return ctx;
 }
-
-/* ══════════════════════════════════════════════════════
    SYSTEM PROMPT — Estratega con conocimiento profundo
    del mercado, memoria viva y pensamiento crítico
 ══════════════════════════════════════════════════════ */
@@ -351,6 +353,12 @@ function cpBuildSystem(ctx) {
     pnlContext = `\n## P&L ACTUAL\n- Revenue YTD: £${Math.round(ytd.gross_revenue).toLocaleString()} | ${ytd.total_clients} clientes\n- EBITDA YTD: £${Math.round(ytd.ebitda).toLocaleString()}\n- CAC este mes: ${mc.cac ? '£' + mc.cac : 'sin datos'}\n- LTV/CAC: ${mc.ltv_cac_ratio || 'N/A'}`;
   }
 
+  /* ── Biblioteca de contenido publicado ── */
+  const libSection = ctx._libCtx || '';
+
+  /* ── Site context (solo si fue fetcheado para esta pregunta) ── */
+  const siteSection = ctx._siteCtx ? cpBuildSiteSection(ctx._siteCtx) : '';
+
   return `Eres el Marketing Co-pilot de Próximo Rol. Eres un estratega de marketing con experiencia en servicios de coaching y formación profesional en España y LATAM.
 
 Tu misión: **ayudar a Próximo Rol a conseguir más clientes, aumentar revenue y mejorar la rentabilidad.** Todo lo que digas debe orientarse a un impacto medible en estas tres métricas.
@@ -369,6 +377,8 @@ Puntuación de datos disponibles: ${ctx.puntuacionDatos}/10
 ## DATOS EN TIEMPO REAL (${ctx.periodoActivo})
 ${dataLines.join('\n')}
 ${pnlContext}
+${libSection}
+${siteSection}
 ${gapsSection}
 
 ${memorySummary || ''}
@@ -402,6 +412,9 @@ ${CP_MARKET_KNOWLEDGE}
 - **Español, directo, sin introducción innecesaria. Máximo 280 palabras.**`;}
 
 
+/* ── Estado de confirmación pendiente ── */
+let CP_PENDING_CONFIRM = null; /* { type, originalMsg, query } */
+
 /* ── Streaming desde la API ── */
 async function cpStream(userMsg) {
   if (!CFG.ak) {
@@ -412,19 +425,63 @@ async function cpStream(userMsg) {
   CP_BUSY = true;
   cpSetBusy(true);
 
-  /* ── Detectar tema para memoria contextual ── */
   const topic  = cpDetectTopic(userMsg);
   const model  = CP_DEEP_MODE ? 'claude-opus-4-5' : 'claude-sonnet-4-20250514';
   const maxTok = CP_DEEP_MODE ? 2048 : 1024;
+  if (CP_DEEP_MODE) { CP_DEEP_MODE = false; cpToggleDeepMode(); }
 
-  if (CP_DEEP_MODE) {
-    CP_DEEP_MODE = false; /* Auto-reset after one use */
-    cpToggleDeepMode();
+  /* ══ SISTEMA INTELIGENTE DE 3 CAPAS ══
+     Primero resuelve si tiene suficiente contexto local,
+     luego decide si preguntar o actuar */
+
+  let siteCtx   = null;
+  let skipAsk   = false;
+
+  /* ¿El usuario está respondiendo a una confirmación pendiente? */
+  if (CP_PENDING_CONFIRM) {
+    const conf = libParseUserConfirmation ? libParseUserConfirmation(userMsg) : null;
+    if (conf === 'yes') {
+      /* Usuario confirmó → ejecutar la acción pendiente */
+      const pending = CP_PENDING_CONFIRM;
+      CP_PENDING_CONFIRM = null;
+      CP_BUSY = false;
+      cpSetBusy(false);
+      if (pending.type === 'realtime') {
+        await cpDoRealtimeSearch(pending.originalMsg, pending.query);
+      } else if (pending.type === 'sync_needed' || pending.type === 'sync_stale') {
+        cpAddMsg('assistant', '🔄 Iniciando sincronización del sitio…');
+        if (typeof libSyncSite === 'function') {
+          await libSyncSite(true);
+          await cpStream(pending.originalMsg);
+        }
+      }
+      return;
+    } else if (conf === 'no') {
+      /* Usuario dijo no → responder con lo que hay */
+      CP_PENDING_CONFIRM = null;
+      skipAsk = true;
+      userMsg = CP_PENDING_CONFIRM?.originalMsg || userMsg;
+    } else {
+      /* Respuesta ambigua → tratar como mensaje normal */
+      CP_PENDING_CONFIRM = null;
+    }
   }
 
-  const ctx    = cpGatherContext();
-  /* Pass topic hint for contextual memory injection */
+  /* ¿Hay algo sobre el sitio/contenido que necesite resolver? */
+  if (!skipAsk && typeof libShouldAskForWebSearch === 'function') {
+    const askResult = libShouldAskForWebSearch(userMsg);
+    if (askResult) {
+      CP_PENDING_CONFIRM = { ...askResult, originalMsg: userMsg };
+      CP_BUSY = false;
+      cpSetBusy(false);
+      cpAddMsg('assistant', askResult.message);
+      return;
+    }
+  }
+
+  const ctx = cpGatherContext();
   if (typeof memBuildSummary === 'function') ctx._topicHint = topic;
+  ctx._siteCtx = siteCtx;
   const system = cpBuildSystem(ctx);
   CP_HISTORY.push({ role: 'user', content: userMsg });
 
@@ -655,6 +712,106 @@ function cpDetectTopic(msg) {
   if (/audiencia|cliente ideal|perfil|buyer/.test(m)) return 'audience';
   return null;
 }
+
+/* ── Detect if question needs real website knowledge ── */
+function cpNeedsSiteContext(msg) {
+  const m = msg.toLowerCase();
+  return /keyword|posicion|ranking|seo|web\s|pagina|página|contenido|landing|blog|titulo|meta|h1|texto|copy|url|sitio|site|encontr[ao]|buscan|busca[nd]|indexa|google.*encontr|trafico|tráfico|orgánico|organico/.test(m);
+}
+
+/* ── Site context cache — fetcheado una vez, válido 30 min ── */
+const CP_SITE_CACHE_KEY = 'pr_site_context_v1';
+
+function cpGetSiteCache() {
+  try {
+    const raw = localStorage.getItem(CP_SITE_CACHE_KEY);
+    if (!raw) return null;
+    const obj = JSON.parse(raw);
+    /* Expired after 30 min */
+    if (Date.now() - obj.ts > 30 * 60 * 1000) return null;
+    return obj.data;
+  } catch (_) { return null; }
+}
+
+function cpSetSiteCache(data) {
+  try {
+    localStorage.setItem(CP_SITE_CACHE_KEY, JSON.stringify({ ts: Date.now(), data }));
+  } catch (_) {}
+}
+
+/* ── Fetch & analyze website via Anthropic web_search tool ── */
+async function cpFetchSiteContext() {
+  const cached = cpGetSiteCache();
+  if (cached) return cached;
+
+  if (!CFG.ak) return null;
+
+  try {
+    const data = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': CFG.ak,
+        'anthropic-version': '2023-06-01',
+        'anthropic-dangerous-direct-browser-access': 'true',
+      },
+      body: JSON.stringify({
+        model: 'claude-sonnet-4-20250514',
+        max_tokens: 1500,
+        tools: [{ type: 'web_search_20250305', name: 'web_search' }],
+        messages: [{
+          role: 'user',
+          content: `Analiza el sitio web de Próximo Rol (proximorol.com). Necesito saber:
+1. Qué páginas principales existen (URLs y títulos)
+2. Qué keywords o términos usa en los títulos, H1 y meta descriptions de las páginas principales
+3. Si tiene sección de blog o recursos
+4. Qué servicios describe y cómo los llama exactamente
+5. Si hay páginas específicas para "coaching entrevistas", "preparar entrevista", "CV", etc.
+
+Busca primero "site:proximorol.com" y luego visita la homepage y páginas de servicios.
+Responde en formato JSON sin markdown: {"pages":[{"url":"...","title":"...","keywords":["..."]}],"hasKeywords":["..."],"missingKeywords":["..."],"blogExists":true/false,"summary":"..."}`
+        }]
+      })
+    }).then(r => r.json());
+
+    /* Extract text from tool use + final response */
+    const textBlocks = (data.content || []).filter(b => b.type === 'text');
+    const raw = textBlocks.map(b => b.text).join('').trim();
+
+    let parsed = null;
+    try {
+      const jsonMatch = raw.match(/\{[\s\S]*\}/);
+      if (jsonMatch) parsed = JSON.parse(jsonMatch[0]);
+    } catch (_) {
+      /* If JSON parse fails, use raw text as summary */
+      parsed = { summary: raw.slice(0, 800), pages: [], hasKeywords: [], missingKeywords: [] };
+    }
+
+    if (parsed) {
+      cpSetSiteCache(parsed);
+      return parsed;
+    }
+  } catch (_) {}
+  return null;
+}
+
+/* ── Build site context section for system prompt ── */
+function cpBuildSiteSection(siteCtx) {
+  if (!siteCtx) return '';
+  const lines = ['## ANÁLISIS REAL DEL SITIO PROXIMOROL.COM (datos actuales, no suposiciones)'];
+  if (siteCtx.summary) lines.push(siteCtx.summary);
+  if (siteCtx.pages?.length) {
+    lines.push('\nPáginas encontradas:');
+    siteCtx.pages.slice(0, 8).forEach(p => {
+      lines.push(`- ${p.url}: "${p.title}" ${p.keywords?.length ? '| keywords: ' + p.keywords.join(', ') : ''}`);
+    });
+  }
+  if (siteCtx.hasKeywords?.length) lines.push('\nKeywords YA presentes en el sitio: ' + siteCtx.hasKeywords.join(', '));
+  if (siteCtx.missingKeywords?.length) lines.push('\nKeywords AUSENTES (gaps reales confirmados): ' + siteCtx.missingKeywords.join(', '));
+  if (siteCtx.blogExists !== undefined) lines.push(`\nBlog/recursos: ${siteCtx.blogExists ? 'Existe' : 'No existe'}`);
+  lines.push('\nINSTRUCCIÓN: Usa estos datos reales. NO digas "imagino que..." o "probablemente..." sobre el contenido del sitio.');
+  return lines.join('\n');
+}
 function toggleCopilot() {
   CP_OPEN = !CP_OPEN;
   const panel = document.getElementById('copilot-panel');
@@ -732,6 +889,70 @@ function cpClearHistory() {
   const sugg = document.getElementById('cp-sugg');
   if (sugg) sugg.style.display = 'flex';
   cpShowWelcome();
+}
+
+/* ── Realtime search (Opción A) — llamado solo con confirmación ── */
+async function cpDoRealtimeSearch(originalMsg, query) {
+  CP_BUSY = true;
+  cpSetBusy(true);
+  const placeholderId = 'cp-rt-' + Date.now();
+  cpAddPlaceholder(placeholderId);
+  cpUpdatePlaceholder(placeholderId, '🔍 Buscando en proximorol.com en tiempo real…');
+
+  let realtimeData = null;
+  if (typeof libRealtimeSearch === 'function') {
+    realtimeData = await libRealtimeSearch(query || originalMsg);
+  }
+
+  cpFinalizePlaceholder(placeholderId, '');
+  document.getElementById(placeholderId)?.remove();
+
+  /* Reinyectar con contexto real */
+  const ctx    = cpGatherContext();
+  if (realtimeData) ctx._siteCtx = { summary: realtimeData, pages:[], hasKeywords:[], missingKeywords:[] };
+  ctx._topicHint = cpDetectTopic(originalMsg);
+  const system = cpBuildSystem(ctx);
+  CP_HISTORY.push({ role: 'user', content: originalMsg });
+
+  const pid = 'cp-msg-' + Date.now();
+  cpAddPlaceholder(pid);
+  let fullText = '';
+  try {
+    const resp = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': CFG.ak,
+        'anthropic-version': '2023-06-01',
+        'anthropic-dangerous-direct-browser-access': 'true',
+      },
+      body: JSON.stringify({ model:'claude-sonnet-4-20250514', max_tokens:1024, system, messages:CP_HISTORY, stream:true }),
+    });
+    if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+    const reader = resp.body.getReader(); const decoder = new TextDecoder();
+    while (true) {
+      const { done, value } = await reader.read(); if (done) break;
+      for (const line of decoder.decode(value, { stream:true }).split('\n')) {
+        if (!line.startsWith('data: ')) continue;
+        const raw = line.slice(6).trim(); if (raw === '[DONE]' || !raw) continue;
+        try { const p = JSON.parse(raw); if (p.type==='content_block_delta'&&p.delta?.text) { fullText+=p.delta.text; cpUpdatePlaceholder(pid,fullText); } } catch(_){}
+      }
+    }
+    CP_HISTORY.push({ role:'assistant', content:fullText });
+    cpFinalizePlaceholder(pid, fullText);
+    if (typeof cpBufferSession==='function') cpBufferSession(originalMsg, fullText);
+    if (typeof memIncrementChats==='function') memIncrementChats();
+  } catch(err) {
+    CP_HISTORY.pop();
+    cpFinalizePlaceholder(pid, `❌ **Error:** ${err.message}`);
+  } finally {
+    CP_BUSY = false; cpSetBusy(false);
+  }
+}
+
+function cpClearSiteCache() {
+  localStorage.removeItem(CP_SITE_CACHE_KEY);
+  cpAddMsg('assistant', '🔄 **Caché del sitio limpiado.** La próxima vez que preguntes sobre SEO o contenido, revisaré proximorol.com en tiempo real de nuevo.');
 }
 
 function cpAutoResize(el) {
