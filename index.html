@@ -1134,6 +1134,11 @@
       <div class="cp-header-sub">Próximo Rol · Acceso a todos los módulos</div>
     </div>
     <div class="cp-header-actions">
+      <button id="cp-deep-btn" class="cp-icon-btn" onclick="cpToggleDeepMode()" title="Activar Modo Profundo (Opus) para la siguiente respuesta">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
+        </svg>
+      </button>
       <button class="cp-icon-btn" onclick="cpClearHistory()" title="Nueva conversación">
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
           <polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 .49-3.46"/>
@@ -1169,6 +1174,11 @@
     </button>
   </div>
 
+  <!-- Save Session bar (solo visible cuando hay intercambios sin guardar) -->
+  <div style="padding:0 12px 10px;flex-shrink:0">
+    <button id="cp-save-btn" onclick="cpSaveSession()" style="display:none;width:100%;padding:6px 12px;background:var(--pp);color:var(--purple);border:1px solid #DDD6FE;border-radius:var(--r);font-size:11px;font-weight:500;cursor:pointer;font-family:'DM Sans',sans-serif;gap:5px;align-items:center;justify-content:center;transition:all .15s"></button>
+  </div>
+
 </div>
 
 <!-- Dashboard modules — loaded in order at bottom of body -->
@@ -1189,6 +1199,7 @@
 <script src="js/alerts.js"></script>
 <script src="js/memory.js"></script>
 <script src="js/pnl.js"></script>
+<script src="js/review.js"></script>
 <script>init();</script>
 </body>
 </html>
