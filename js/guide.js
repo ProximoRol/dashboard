@@ -16,6 +16,7 @@ function renderGuidePage() {
       li:   !!(cfg.liId || cfg.liToken),
       crm:  !!(cfg.monday || cfg.hubspot),
       mail: !!(cfg.instantly),
+      ig:   !!(cfg.metatoken),
     };
     var connCount = Object.values(conn).filter(Boolean).length;
 
@@ -67,7 +68,8 @@ function renderGuidePage() {
     }
 
     // Status bar
-    var sLabels = {ga4:'GA4',gsc:'GSC',ads:'Ads',li:'LinkedIn',crm:'CRM',mail:'Mailing'};
+    var totalSources = Object.keys(conn).length;
+    var sLabels = {ga4:'GA4',gsc:'GSC',ads:'Ads',li:'LinkedIn',crm:'CRM',mail:'Mailing',ig:'Instagram'};
     var sDots = Object.keys(conn).map(function(k){
       return '<div style="display:flex;align-items:center;gap:5px;font-size:11px;color:var(--mt)">'+
         '<span style="width:7px;height:7px;border-radius:50%;display:inline-block;background:'+(conn[k]?'var(--green)':'#DC2626')+'"></span>'+sLabels[k]+'</div>';
@@ -76,7 +78,7 @@ function renderGuidePage() {
     var statusBar =
       '<div style="background:var(--sf);border:1px solid var(--bd);border-radius:var(--rl);padding:14px 18px;margin-bottom:16px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px">'+
         '<div><div style="font-size:13px;font-weight:500;color:var(--tx)">Estado del sistema</div>'+
-        '<div style="font-size:11px;color:var(--mt);margin-top:2px">'+connCount+' de 6 fuentes conectadas</div></div>'+
+        '<div style="font-size:11px;color:var(--mt);margin-top:2px">'+connCount+' de '+totalSources+' fuentes conectadas</div></div>'+
         '<div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center">'+sDots+
         '<button onclick="showP(\'settings\',null)" style="padding:4px 12px;border:1px solid var(--bd2);border-radius:var(--r);font-size:11px;cursor:pointer;background:var(--sf2);color:var(--mt);font-family:\'DM Sans\',sans-serif">Configurar →</button></div></div>';
 
@@ -86,11 +88,11 @@ function renderGuidePage() {
         srcCard('🔍','Search Console','Keywords, posiciones orgánicas',conn.gsc,'gsc',false)+
         srcCard('📢','Google Ads','Campañas de pago, CTR, CPC',conn.ads,'ads',false)+
         srcCard('💼','LinkedIn','Followers, engagement, posts',conn.li,'li',false)+
-        srcCard('🏢','CRM / HubSpot','Pipeline, deals, oportunidades',conn.crm,'mon',false)+
-        srcCard('📧','Mailing masivo','Campañas email, opens, replies',conn.mail,'inst',false)
+        srcCard('🏢','CRM','Pipeline, deals, oportunidades',conn.crm,'mon',false)+
+        srcCard('📧','Mailing masivo','Campañas email, opens, replies',conn.mail,'inst',false)+
+        srcCard('📸','Instagram / Facebook','Posts, stories, reach, engagement',conn.ig,'ig',false)
       )+
       grid(150,
-        srcCard('📸','Instagram','Posts, stories, reach',false,null,true)+
         srcCard('🎬','YouTube','Vídeos, retención, subs',false,null,true)+
         srcCard('🎵','TikTok','Vídeos, FYP, engagement',false,null,true)
       );
@@ -107,9 +109,8 @@ function renderGuidePage() {
 
     var layer3 = sectionLabel('Capa 3 — Inteligencia IA') +
       grid(220,
-        modCard('🧠','Keyword Intelligence','Gap analysis de keywords. Detecta términos con alta demanda donde no apareces aún','#7C3AED','kwi',false)+
-        modCard('🔬','SEO Intelligence','Auditor de páginas, chat SEO con web search, competitor spy y checklist SEO completo','#2563EB','seo',false)+
-        modCard('📅','Monthly Report','Resumen ejecutivo mensual con todos los KPIs consolidados — listo para compartir','#0891B2','report',false)
+        modCard('🔬','SEO & Keywords','Gap analysis de keywords, auditor de páginas, SEO Chat con web search, competitor spy y checklist SEO completo','#2563EB','kwi',false)+
+        modCard('📅','Monthly Report','Resumen del MES cerrado: KPIs consolidados, evolución vs mes anterior y análisis exportable — distinto del Overview que muestra datos en tiempo real','#0891B2','report',false)
       );
 
     var layer4 = sectionLabel('Capa 4 — Contenido e IA generativa') +
