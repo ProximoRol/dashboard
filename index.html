@@ -161,8 +161,7 @@
       <div class="ni" onclick="showP('ga4',this)"><div class="nico">📈</div>Google Analytics<span class="nb nb-off" id="nb-ga4">—</span></div>
       <div class="ni" onclick="showP('gsc',this)"><div class="nico">🔍</div>Search Console<span class="nb nb-off" id="nb-gsc">—</span></div>
       <div class="ni" onclick="showP('ads',this)"><div class="nico">📢</div>Google Ads<span class="nb nb-off" id="nb-ads">—</span></div>
-      <div class="ni" onclick="showP('kwi',this)"><div class="nico">🧠</div>Keyword Intelligence<span class="nb nb-off" id="nb-kwi">—</span></div>
-      <div class="ni" onclick="showP('seo',this)"><div class="nico">🔎</div>SEO Intelligence<span class="nb nb-off" id="nb-seo">—</span></div>
+      <div class="ni" onclick="showP('kwi',this)"><div class="nico">🔬</div>SEO &amp; Keywords<span class="nb nb-off" id="nb-kwi">—</span></div>
       <div class="ns" style="margin-top:6px">Social & Redes</div>
       <div class="ni" onclick="showP('li',this)"><div class="nico">💼</div>LinkedIn<span class="nb nb-off" id="nb-li">—</span></div>
       <div class="ni" onclick="showP('inst',this)"><div class="nico">📧</div>Mailing masivo<span class="nb nb-off" id="nb-inst">—</span></div>
@@ -668,7 +667,7 @@
 
     </div>
 <div class="page" id="page-kwi">
-      <div class="sh"><span class="sl">Keyword Intelligence</span><div class="sln"></div><button class="info-btn" onclick="openInfoModal('kwi')" title="What is this page?">i</button></div>
+      <div class="sh"><span class="sl">SEO &amp; Keywords</span><div class="sln"></div><button onclick="showP('seo',this)" style="padding:5px 14px;background:var(--sf2);color:var(--mt);border:1px solid var(--bd2);border-radius:var(--r);font-size:12px;font-weight:500;cursor:pointer;font-family:inherit">🔍 SEO Intelligence →</button><button class="info-btn" onclick="openInfoModal('kwi')" title="What is this page?">i</button></div>
 
       <!-- Block 1: Branded vs Non-branded split -->
       <div class="cd" style="margin-bottom:12px" id="kwi-split-card">
@@ -817,7 +816,7 @@
 
 <!-- SEO INTELLIGENCE -->
 <div class="page" id="page-seo">
-  <div class="sh"><span class="sl">SEO Intelligence</span><div class="sln"></div><button class="info-btn" onclick="openInfoModal('seo')" title="What is this page?">i</button></div>
+  <div class="sh"><span class="sl">SEO Intelligence</span><div class="sln"></div><button onclick="showP('kwi',this)" style="padding:5px 14px;background:var(--sf2);color:var(--mt);border:1px solid var(--bd2);border-radius:var(--r);font-size:12px;font-weight:500;cursor:pointer;font-family:inherit">← Keyword Analysis</button><button class="info-btn" onclick="openInfoModal('seo')" title="What is this page?">i</button></div>
 
   <!-- Tab switcher -->
   <div style="display:flex;gap:4px;margin-bottom:16px;background:var(--sf2);padding:4px;border-radius:var(--r);width:fit-content">
