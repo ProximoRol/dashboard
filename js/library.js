@@ -348,13 +348,44 @@ function renderLibraryPage(){
       </div>
     </div>
 
-    <!-- Stats -->
+    <!-- Stats — clickables para filtrar -->
     <div style="display:flex;gap:10px;margin-bottom:14px;flex-wrap:wrap">
-      <div style="background:var(--gp);border:1px solid #9FE1CB;border-radius:var(--r);padding:8px 14px;display:flex;gap:8px;align-items:center"><span>✅</span><div><div style="font-size:18px;font-weight:600;color:var(--green);line-height:1">${totalPub}</div><div style="font-size:10px;color:var(--green)">Publicados</div></div></div>
-      <div style="background:var(--ap);border:1px solid #FDE68A;border-radius:var(--r);padding:8px 14px;display:flex;gap:8px;align-items:center"><span>📝</span><div><div style="font-size:18px;font-weight:600;color:var(--amber);line-height:1">${totalDraft}</div><div style="font-size:10px;color:var(--amber)">Borradores</div></div></div>
-      <div style="background:var(--sf);border:1px solid var(--bd);border-radius:var(--r);padding:8px 14px;display:flex;gap:8px;align-items:center"><span>📚</span><div><div style="font-size:18px;font-weight:600;color:var(--tx);line-height:1">${items.length}</div><div style="font-size:10px;color:var(--ht)">Total</div></div></div>
-      ${snap?.data?.pages?.length?`<div style="background:var(--sf);border:1px solid var(--bd);border-radius:var(--r);padding:8px 14px;display:flex;gap:8px;align-items:center"><span>🌐</span><div><div style="font-size:18px;font-weight:600;color:var(--tx);line-height:1">${snap.data.pages.length}</div><div style="font-size:10px;color:var(--ht)">Págs. web</div></div></div>`:''}
+      <div onclick="LIB_FILTER.status='published';LIB_FILTER.channel='all';LIB_CHANNEL_VIEW='all';renderLibraryPage()" style="background:var(--gp);border:1px solid #9FE1CB;border-radius:var(--r);padding:8px 14px;display:flex;gap:8px;align-items:center;cursor:pointer;transition:opacity .15s" onmouseover="this.style.opacity='.75'" onmouseout="this.style.opacity='1'" title="Ver solo publicados">
+        <span>✅</span><div><div style="font-size:18px;font-weight:600;color:var(--green);line-height:1">${totalPub}</div><div style="font-size:10px;color:var(--green)">Publicados</div></div>
+      </div>
+      <div onclick="LIB_FILTER.status='draft';LIB_FILTER.channel='all';LIB_CHANNEL_VIEW='all';renderLibraryPage()" style="background:var(--ap);border:1px solid #FDE68A;border-radius:var(--r);padding:8px 14px;display:flex;gap:8px;align-items:center;cursor:pointer;transition:opacity .15s" onmouseover="this.style.opacity='.75'" onmouseout="this.style.opacity='1'" title="Ver solo borradores">
+        <span>📝</span><div><div style="font-size:18px;font-weight:600;color:var(--amber);line-height:1">${totalDraft}</div><div style="font-size:10px;color:var(--amber)">Borradores</div></div>
+      </div>
+      <div onclick="LIB_FILTER.status='all';LIB_FILTER.channel='all';LIB_CHANNEL_VIEW='all';renderLibraryPage()" style="background:var(--sf);border:1px solid var(--bd);border-radius:var(--r);padding:8px 14px;display:flex;gap:8px;align-items:center;cursor:pointer;transition:opacity .15s" onmouseover="this.style.opacity='.75'" onmouseout="this.style.opacity='1'" title="Ver todo">
+        <span>📚</span><div><div style="font-size:18px;font-weight:600;color:var(--tx);line-height:1">${items.length}</div><div style="font-size:10px;color:var(--ht)">Total</div></div>
+      </div>
+      ${snap?.data?.pages?.length?`
+      <div onclick="var p=document.getElementById('lib-web-panel');p.style.display=p.style.display==='none'?'block':'none'" style="background:var(--sf);border:1px solid var(--bd);border-radius:var(--r);padding:8px 14px;display:flex;gap:8px;align-items:center;cursor:pointer;transition:opacity .15s" onmouseover="this.style.opacity='.75'" onmouseout="this.style.opacity='1'" title="Ver páginas web del sitio">
+        <span>🌐</span><div><div style="font-size:18px;font-weight:600;color:var(--tx);line-height:1">${snap.data.pages.length}</div><div style="font-size:10px;color:var(--ht)">Págs. web</div></div>
+      </div>`:''}
     </div>
+
+    <!-- Panel de páginas web — se despliega al hacer click en el stat -->
+    ${snap?.data?.pages?.length?`
+    <div id="lib-web-panel" style="display:none;border:1px solid var(--bd);border-radius:var(--rl);margin-bottom:14px;overflow:hidden">
+      <div style="padding:10px 14px;background:var(--sf2);border-bottom:1px solid var(--bd);display:flex;align-items:center;justify-content:space-between">
+        <div style="font-size:12px;font-weight:600;color:var(--tx)">🌐 Páginas detectadas en proximorol.com</div>
+        <div style="font-size:11px;color:var(--ht)">Sync: ${snap.date||'—'}</div>
+      </div>
+      ${snap.data.pages.map(p=>{
+        const url=p.url&&p.url.startsWith('http')?p.url:(p.url?'https://'+p.url:'');
+        return`<div style="display:flex;align-items:center;gap:12px;padding:10px 14px;border-bottom:1px solid var(--bd);background:var(--sf)">
+          <div style="flex:1;min-width:0">
+            <div style="font-size:12px;font-weight:500;color:var(--tx);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${(p.title||p.url||'Sin título').replace(/</g,'&lt;')}</div>
+            ${p.description?`<div style="font-size:11px;color:var(--mt);margin-top:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${p.description.slice(0,120).replace(/</g,'&lt;')}</div>`:''}
+            ${p.keywords?.length?`<div style="margin-top:4px;display:flex;gap:4px;flex-wrap:wrap">${p.keywords.slice(0,4).map(k=>`<span style="font-size:10px;padding:1px 6px;background:var(--sf2);border:1px solid var(--bd);border-radius:10px;color:var(--ht)">${k}</span>`).join('')}</div>`:''}
+            <div style="font-size:10px;color:var(--ht);margin-top:4px">${url||'URL no disponible'}</div>
+          </div>
+          ${url?`<a href="${url}" target="_blank" style="flex-shrink:0;padding:5px 12px;border:1px solid var(--bd2);border-radius:var(--r);font-size:11px;color:var(--blue);text-decoration:none;white-space:nowrap">Abrir →</a>`:''}
+        </div>`;
+      }).join('')}
+      ${snap.data.summary?`<div style="padding:10px 14px;font-size:11px;color:var(--mt);background:var(--sf2)">${snap.data.summary.replace(/</g,'&lt;')}</div>`:''}
+    </div>`:''}
 
     <!-- Channel tabs -->
     <div style="display:flex;gap:4px;overflow-x:auto;margin-bottom:14px;padding-bottom:2px;scrollbar-width:none">${tabs}</div>
