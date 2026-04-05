@@ -35,6 +35,29 @@ const BGT_DATA = {
   catColors     : {},
   months        : ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'],
 };
+
+/* ── Sincronización INMEDIATA desde localStorage ──
+   budget_v2.js aún no cargó, así que no podemos llamar bgt2SyncGlobal().
+   Hacemos la misma lógica inline para que BGT_DATA esté listo
+   ANTES de que init() renderice el Overview. */
+(function bgt2EagerSync() {
+  try {
+    const cfg = JSON.parse(localStorage.getItem('pr_budget_v2') || 'null');
+    if (!cfg || !cfg.categories || !cfg.lines) return;
+    const catColors = {};
+    cfg.categories.forEach(c => { catColors[c.name] = c.color; });
+    const rows = cfg.lines.map(l => {
+      const cat = cfg.categories.find(c => c.id === l.catId);
+      return { cat: cat ? cat.name : 'Otros', name: l.name, vals: [...(l.vals || Array(12).fill(0))] };
+    });
+    const monthlyTotals = Array(12).fill(0);
+    rows.forEach(r => r.vals.forEach((v, i) => { monthlyTotals[i] += (v || 0); }));
+    BGT_DATA.rows          = rows;
+    BGT_DATA.monthlyTotals = monthlyTotals;
+    BGT_DATA.annualTotal   = monthlyTotals.reduce((a, b) => a + b, 0);
+    BGT_DATA.catColors     = catColors;
+  } catch(_) {}
+})();
 const BGT_AK = 'eco_actual_v2';
 const BGT_MK = 'eco_mappings_v1';
 // ─────────────────────────────────────────
@@ -575,13 +598,15 @@ function renderOverview(){
   const CUR_M    = NOW.getMonth();
   const ytdMonths= Array.from({length:CUR_M+1},(_,i)=>i);
 
-  // YTD actual spend
+  // YTD actual spend — itera eco_actual_v2 directamente, sin depender de BGT_DATA.rows
+  // para evitar mostrar £0 si el usuario llega al Overview antes de que bgt2SyncGlobal corra
   let ytdActual = 0;
-  cats.forEach(cat=>{
-    ytdMonths.forEach(m=>{
-      ytdActual += BGT_DATA.rows.filter(r=>r.cat===cat)
-        .reduce((s,r)=>s+parseFloat(actual[cat+'|'+r.name+'|'+m]||0),0);
-    });
+  Object.entries(actual).forEach(([k, v]) => {
+    const lastPipe = k.lastIndexOf('|');
+    if (lastPipe !== -1) {
+      const mPart = parseInt(k.slice(lastPipe + 1));
+      if (!isNaN(mPart) && ytdMonths.includes(mPart)) ytdActual += parseFloat(v) || 0;
+    }
   });
   const ytdTarget = ytdMonths.reduce((s,m)=>s+BGT_DATA.monthlyTotals[m],0);
 
@@ -1033,14 +1058,4 @@ async function renderRepEmail(){
 }
 
 
-/* ── Sincronización temprana de BGT_DATA con el presupuesto real ──
-   budget.js carga antes que budget_v2.js, así que bgt2SyncGlobal no existe aún.
-   Este listener espera a que el DOM esté listo y luego sincroniza.
-   Esto garantiza que BGT_DATA tenga los datos reales lo antes posible,
-   sin depender del setTimeout de 300ms de budget_v2.js */
-document.addEventListener('DOMContentLoaded', function() {
-  try {
-    const cfg = JSON.parse(localStorage.getItem('pr_budget_v2') || 'null');
-    if (cfg && typeof bgt2SyncGlobal === 'function') bgt2SyncGlobal(cfg);
-  } catch(_) {}
-});
+
