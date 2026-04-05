@@ -25,7 +25,16 @@ const CATEGORY_MAP = {
 };
 
 // ── Budget constants ─────────────────────
-const BGT_DATA = {"rows": [{"cat": "Advertising & Campaigns", "name": "Designer", "vals": [0, 760, 360, 360, 550, 550, 550, 550, 550, 550, 550, 550]}, {"cat": "Advertising & Campaigns", "name": "Google Ads", "vals": [152, 226, 750, 750, 750, 750, 750, 750, 750, 750, 750, 750]}, {"cat": "Advertising & Campaigns", "name": "PR Agency", "vals": [2500, 2500, 2500, 2500, 2500, 2500, 2500, 2500, 2500, 2500, 2500, 2500]}, {"cat": "Advertising & Campaigns", "name": "Mailing campaigns", "vals": [0, 680, 350, 250, 250, 250, 250, 250, 250, 250, 250, 250]}, {"cat": "Advertising & Campaigns", "name": "Promoting activities", "vals": [0, 0, 750, 200, 200, 200, 0, 0, 0, 0, 0, 0]}, {"cat": "Advertising & Campaigns", "name": "Other", "vals": [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]}, {"cat": "Sales Outbound", "name": "Veolia partnership", "vals": [0, 0, 500, 0, 2000, 500, 500, 500, 500, 500, 500, 500]}, {"cat": "Sales Outbound", "name": "Client visits & Events", "vals": [0, 0, 0, 50, 50, 50, 50, 50, 50, 50, 50, 50]}, {"cat": "Sales Outbound", "name": "Current Associations", "vals": [600, 0, 0, 1000, 0, 0, 0, 0, 0, 0, 0, 0]}, {"cat": "Sales Outbound", "name": "Event participation", "vals": [0, 0, 0, 0, 0, 0, 200, 200, 100, 0, 0, 0]}, {"cat": "Sales Outbound", "name": "LinkedIn Premium", "vals": [36, 36, 75, 75, 75, 75, 75, 75, 75, 75, 75, 75]}, {"cat": "Sales Outbound", "name": "New Associations", "vals": [700, 700, 0, 0, 0, 0, 700, 0, 700, 0, 700, 0]}, {"cat": "Sales Outbound", "name": "Other", "vals": [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]}, {"cat": "Team Meetings", "name": "Food", "vals": [120, 120, 90, 90, 90, 90, 90, 90, 90, 90, 90, 90]}, {"cat": "Team Meetings", "name": "Trainline", "vals": [460, 460, 321, 321, 321, 321, 321, 321, 321, 321, 321, 321]}, {"cat": "Team Meetings", "name": "Other", "vals": [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]}, {"cat": "Tools", "name": "Mailchimp", "vals": [261, 261, 261, 261, 0, 0, 0, 0, 0, 0, 0, 0]}, {"cat": "Tools", "name": "Canva", "vals": [36, 36, 36, 36, 36, 36, 36, 36, 36, 36, 36, 36]}, {"cat": "Tools", "name": "Cognism", "vals": [233, 233, 233, 233, 233, 0, 0, 0, 0, 0, 0, 0]}, {"cat": "Tools", "name": "Copilot / AI", "vals": [0, 0, 30, 30, 30, 30, 30, 30, 30, 30, 30, 30]}, {"cat": "Tools", "name": "CRM Monday.com", "vals": [333, 333, 333, 400, 400, 400, 400, 400, 400, 400, 400, 400]}, {"cat": "Tools", "name": "IA Video generation", "vals": [0, 0, 35, 35, 35, 35, 35, 35, 35, 35, 35, 35]}, {"cat": "Tools", "name": "Other", "vals": [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]}], "monthlyTotals": [5431, 6345, 6624, 6591, 7520, 5787, 6487, 5787, 6387, 5587, 6287, 5587], "annualTotal": 74420, "catColors": {"Advertising & Campaigns": "#DC2626", "Sales Outbound": "#059669", "Team Meetings": "#0891B2", "Tools": "#7C3AED"}, "months": ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]};
+/* BGT_DATA arranca vacío — bgt2SyncGlobal() lo rellena con el presupuesto real
+   configurado en Budget & Costs (guardado en localStorage pr_budget_v2).
+   Esto ocurre automáticamente en budget_v2.js init (300ms) y al visitar la página. */
+const BGT_DATA = {
+  rows          : [],
+  monthlyTotals : Array(12).fill(0),
+  annualTotal   : 0,
+  catColors     : {},
+  months        : ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'],
+};
 const BGT_AK = 'eco_actual_v2';
 const BGT_MK = 'eco_mappings_v1';
 // ─────────────────────────────────────────
@@ -1023,3 +1032,15 @@ async function renderRepEmail(){
   }catch(e){}
 }
 
+
+/* ── Sincronización temprana de BGT_DATA con el presupuesto real ──
+   budget.js carga antes que budget_v2.js, así que bgt2SyncGlobal no existe aún.
+   Este listener espera a que el DOM esté listo y luego sincroniza.
+   Esto garantiza que BGT_DATA tenga los datos reales lo antes posible,
+   sin depender del setTimeout de 300ms de budget_v2.js */
+document.addEventListener('DOMContentLoaded', function() {
+  try {
+    const cfg = JSON.parse(localStorage.getItem('pr_budget_v2') || 'null');
+    if (cfg && typeof bgt2SyncGlobal === 'function') bgt2SyncGlobal(cfg);
+  } catch(_) {}
+});
