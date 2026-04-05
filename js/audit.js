@@ -344,6 +344,10 @@ function caRender(d) {
   const next = a.next_content || [];
   const maxTopicCount = Math.max(...topics.map(t => t.count), 1);
 
+  /* Guardar globalmente para que caOpenInStudio() pueda referenciarlos por índice */
+  window._CA_GAPS_DATA = gaps;
+  window._CA_NEXT_DATA = next;
+
   const priorityColor = { high: { bg: 'var(--rp)', text: 'var(--red)', label: 'Alta prioridad' }, medium: { bg: 'var(--ap)', text: 'var(--amber)', label: 'Media prioridad' }, low: { bg: 'var(--gp)', text: 'var(--green)', label: 'Baja prioridad' } };
   const perfColor = { high: 'var(--green)', medium: 'var(--amber)', low: 'var(--ht)' };
   const channelIcon = { blog: '📝', linkedin: '💼', gsc: '🔍', ga4: '📈', ambos: '🔄' };
@@ -396,7 +400,7 @@ function caRender(d) {
     <div class="cd" style="margin-bottom:12px">
       <div class="ch"><span class="ct">Gaps detectados</span><span class="bg" style="background:var(--pp);color:var(--purple)">IA · Alta oportunidad</span></div>
       ${gaps.length === 0 ? '<div class="notice"><strong>Sin gaps detectados</strong>¡Excelente cobertura de temas!</div>' :
-        gaps.map(g => {
+        gaps.map((g, i) => {
           const p = priorityColor[g.priority] || priorityColor.medium;
           return `<div style="display:flex;gap:12px;align-items:flex-start;padding:10px 0;border-bottom:1px solid var(--bd)">
             <div style="width:8px;height:8px;border-radius:50%;background:${p.text};flex-shrink:0;margin-top:4px"></div>
@@ -407,6 +411,7 @@ function caRender(d) {
               </div>
               <div style="font-size:11px;color:var(--mt);margin-top:3px;line-height:1.5">${g.reason}</div>
               ${g.opportunity ? `<div style="font-size:11px;color:var(--teal);margin-top:2px">→ ${g.opportunity}</div>` : ''}
+              <button onclick="caOpenInStudio('gap',${i})" style="margin-top:7px;padding:3px 10px;background:var(--gp);color:var(--green);border:1px solid #9FE1CB;border-radius:var(--r);font-size:11px;cursor:pointer;font-family:'DM Sans',sans-serif;font-weight:500">✍️ Crear contenido →</button>
             </div>
           </div>`;
         }).join('')
@@ -425,6 +430,7 @@ function caRender(d) {
             </div>
             <div style="font-size:12px;font-weight:500;color:var(--tx);margin-bottom:4px">${n.title}</div>
             <div style="font-size:11px;color:var(--mt);line-height:1.5">${n.rationale}</div>
+            <button onclick="caOpenInStudio('next',${i})" style="margin-top:8px;width:100%;padding:4px 0;background:var(--gp);color:var(--green);border:1px solid #9FE1CB;border-radius:var(--r);font-size:11px;cursor:pointer;font-family:'DM Sans',sans-serif;font-weight:500">✍️ Crear contenido →</button>
           </div>`).join('')}
       </div>
     </div>` : ''}
@@ -433,4 +439,17 @@ function caRender(d) {
       <div style="font-size:11px;font-weight:600;color:var(--purple);text-transform:uppercase;letter-spacing:.05em;margin-bottom:8px">Síntesis IA</div>
       <div style="font-size:13px;color:#26215C;line-height:1.7">${a.insight || '—'}</div>
     </div>`;
+}
+
+/* ── Bridge: Audit → Content Studio ── */
+function caOpenInStudio(type, i) {
+  const d = type === 'gap'
+    ? (window._CA_GAPS_DATA || [])[i]
+    : (window._CA_NEXT_DATA || [])[i];
+  if (!d) return;
+  const topic = type === 'gap' ? d.topic : d.title;
+  const ctx   = type === 'gap'
+    ? [d.reason, d.opportunity ? '→ ' + d.opportunity : ''].filter(Boolean).join('\n')
+    : [d.rationale, d.format ? 'Formato sugerido: ' + d.format : ''].filter(Boolean).join('\n');
+  if (typeof csPreload === 'function') csPreload(topic, ctx);
 }

@@ -465,3 +465,22 @@ function csDownload(filename, content, type) {
   a.click();
   URL.revokeObjectURL(a.href);
 }
+
+/* ── Bridge: recibe tema y contexto desde Content Audit ── */
+function csPreload(topic, context) {
+  const navItem = [...document.querySelectorAll('.ni')]
+    .find(el => el.getAttribute('onclick')?.includes("'content'"));
+  showP('content', navItem || null);
+  requestAnimationFrame(() => requestAnimationFrame(() => {
+    const topicEl = document.getElementById('cs-topic');
+    const notesEl = document.getElementById('cs-notes');
+    if (topicEl) {
+      topicEl.value = topic;
+      topicEl.dispatchEvent(new Event('input'));
+      topicEl.focus();
+      topicEl.style.borderColor = 'var(--green)';
+      setTimeout(() => { topicEl.style.borderColor = ''; }, 2000);
+    }
+    if (notesEl && context) notesEl.value = context;
+  }));
+}
