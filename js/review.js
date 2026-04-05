@@ -398,9 +398,11 @@ function rvExportMonthly() {
 
 (function rvInit() {
   function injectReviewPage() {
-    /* 1. Nav item en sección Planning */
+    /* 1. Nav item — solo inyectar si no existe ya en el sidebar estático */
     const nav = document.querySelector('.sb-nav');
-    if (nav) {
+    const alreadyHasNav = nav && Array.from(nav.querySelectorAll('.ni'))
+      .some(el => el.getAttribute('onclick')?.includes("'review'"));
+    if (!alreadyHasNav && nav) {
       const planningItems = Array.from(nav.querySelectorAll('.ni'))
         .find(el => el.textContent.includes('P&L') || el.textContent.includes('Budget'));
       if (planningItems) {
@@ -412,13 +414,20 @@ function rvExportMonthly() {
       }
     }
 
-    /* 2. Página */
+    /* 2. Página — si ya existe en el HTML, rellenarla; si no, crearla */
     const main = document.querySelector('.main');
     if (!main) return;
 
-    const page = document.createElement('div');
-    page.className = 'page';
-    page.id = 'page-review';
+    let page = document.getElementById('page-review');
+    if (!page) {
+      page = document.createElement('div');
+      page.className = 'page';
+      page.id = 'page-review';
+      const lastPage = main.querySelector('.page:last-of-type');
+      if (lastPage) lastPage.insertAdjacentElement('afterend', page);
+      else main.appendChild(page);
+    }
+
     page.innerHTML = `
       <div class="sh">
         <span class="sl">Revisión periódica</span>
@@ -461,10 +470,6 @@ function rvExportMonthly() {
         <div class="ch"><span class="ct">Historial de revisiones</span></div>
         <div id="rv-history" style="padding:4px 0"></div>
       </div>`;
-
-    const lastPage = main.querySelector('.page:last-of-type');
-    if (lastPage) lastPage.insertAdjacentElement('afterend', page);
-    else main.appendChild(page);
 
     if (typeof TITLES !== 'undefined') TITLES['review'] = 'Revisión periódica';
 

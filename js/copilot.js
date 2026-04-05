@@ -231,6 +231,7 @@ function cpGatherContext() {
 
   return ctx;
 }
+/* ══════════════════════════════════════════════════════
    SYSTEM PROMPT — Estratega con conocimiento profundo
    del mercado, memoria viva y pensamiento crítico
 ══════════════════════════════════════════════════════ */
