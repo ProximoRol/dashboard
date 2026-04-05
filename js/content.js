@@ -372,7 +372,9 @@ async function csGenerate() {
   CS_CHAT_HISTORY = [{ role: 'user', content: userPrompt }];
 
   try {
-    const systemPrompt = typeof cfg.system === 'function' ? cfg.system() : cfg.system;
+    /* System prompt + contexto de Library para evitar repetición de temas */
+    const systemPrompt = (typeof cfg.system === 'function' ? cfg.system() : cfg.system)
+      + (typeof libBuildStudioContext === 'function' ? (libBuildStudioContext(CS_AGENT) || '') : '');
     const data = await antFetch({
       model: 'claude-sonnet-4-20250514',
       max_tokens: 1500,
@@ -414,7 +416,8 @@ async function csChatSend() {
   CS_CHAT_HISTORY.push({ role: 'user', content: msg });
   try {
     const cfg = CS_AGENTS[CS_AGENT];
-    const systemPrompt = typeof cfg.system === 'function' ? cfg.system() : cfg.system;
+    const systemPrompt = (typeof cfg.system === 'function' ? cfg.system() : cfg.system)
+      + (typeof libBuildStudioContext === 'function' ? (libBuildStudioContext(CS_AGENT) || '') : '');
     const data = await antFetch({ model: 'claude-sonnet-4-20250514', max_tokens: 1500, system: systemPrompt, messages: CS_CHAT_HISTORY });
     const text = (data.content || []).filter(b => b.type === 'text').map(b => b.text).join('');
     CS_CHAT_HISTORY.push({ role: 'assistant', content: text });

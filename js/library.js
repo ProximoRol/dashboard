@@ -25,6 +25,48 @@ const LIB_AGENT_MAP = {
   instagram:'instagram',linkedin:'linkedin',newsletter:'mailing',youtube:'tiktok',ads:'ads'
 };
 
+/* ── Contexto para Content Studio ── */
+
+/* Devuelve los últimos N ítems publicados de un canal */
+function libGetByChannel(channel, limit = 5) {
+  return libLoad()
+    .filter(i => i.channel === channel && i.status === 'published')
+    .sort((a, b) => new Date(b.publishedAt || b.createdAt) - new Date(a.publishedAt || a.createdAt))
+    .slice(0, limit);
+}
+
+/* Construye el bloque de contexto que se inyecta en el system prompt del Studio */
+function libBuildStudioContext(csAgent, limit = 5) {
+  const channel = LIB_AGENT_MAP[csAgent] || csAgent;
+  const items = libGetByChannel(channel, limit);
+  if (!items.length) return '';
+
+  const chLabel = {
+    linkedin:'LinkedIn', instagram:'Instagram', mailing:'Newsletter/Email',
+    tiktok:'TikTok/YouTube', ads:'Ads', blog:'Blog'
+  }[channel] || channel;
+
+  const itemList = items.map((item, i) => {
+    const date = item.publishedAt
+      ? new Date(item.publishedAt).toLocaleDateString('es-ES', { day:'numeric', month:'short' })
+      : '';
+    const title = item.title ? `"${item.title}"` : '(sin título)';
+    const preview = (item.content || '').slice(0, 200).trim()
+      + ((item.content || '').length > 200 ? '…' : '');
+    return `${i + 1}. ${title}${date ? ` — ${date}` : ''}\n   ${preview}`;
+  }).join('\n\n');
+
+  return `\n\n## CONTENIDO YA PUBLICADO EN ${chLabel.toUpperCase()} (últimos ${items.length} publicados)
+INSTRUCCIÓN CRÍTICA: Revisa estos contenidos antes de generar. No repitas temas, ángulos de apertura ni estructuras ya usadas. Cada pieza nueva debe aportar algo diferente.
+
+${itemList}
+
+Al generar el nuevo contenido asegúrate de:
+- Usar un ángulo o perspectiva que no aparezca en los anteriores
+- No empezar con las mismas frases o estructuras
+- Si el tema es similar, abordarlo desde un punto de vista nuevo o una audiencia distinta`;
+}
+
 /* ── CRUD ── */
 function libLoad(){try{return JSON.parse(localStorage.getItem(LIB_KEY)||'[]');}catch(_){return[];}}
 function libSave(i){localStorage.setItem(LIB_KEY,JSON.stringify(i));}
