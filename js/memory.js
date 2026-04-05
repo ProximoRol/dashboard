@@ -366,12 +366,18 @@ function memBuildSummary(topicHint = null) {
     lines.push(`NO repetir — intentos fallidos: ${failed.map(r => `${r.text}`).join(' | ')}`);
   }
 
-  /* Insights con alta confianza — contextuales si hay topicHint */
+  /* Insights con alta confianza — siempre muestra los de mayor impacto
+     más los del topic detectado. Nunca excluye insights transversales
+     que podrían revelar el cuello de botella real. */
   const highQualityInsights = mem.insights
     .filter(i => (i.confidence || 3) >= 3 && i.actionable)
-    .filter(i => !topicHint || i.category === topicHint || i.revenueImpact === 'high')
     .filter(i => !['weekly_review','monthly_review','alert'].includes(i.category))
-    .slice(0, 5);
+    .filter(i =>
+      (i.confidence >= 4 && i.revenueImpact === 'high') ||   // siempre: alto impacto real
+      i.category === topicHint ||                             // siempre: topic actual
+      !topicHint                                              // sin topic: todos los buenos
+    )
+    .slice(0, 6);
 
   if (highQualityInsights.length) {
     lines.push(`Aprendizajes validados: ${highQualityInsights.map(i => i.text).join(' | ')}`);

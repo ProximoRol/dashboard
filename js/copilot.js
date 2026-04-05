@@ -231,8 +231,6 @@ function cpGatherContext() {
 
   return ctx;
 }
-
-/* ══════════════════════════════════════════════════════
    SYSTEM PROMPT — Estratega con conocimiento profundo
    del mercado, memoria viva y pensamiento crítico
 ══════════════════════════════════════════════════════ */
@@ -386,7 +384,15 @@ ${gapsSection}
 ${memorySummary || ''}
 
 ## CONOCIMIENTO DE MERCADO
-${CP_MARKET_KNOWLEDGE}
+${ctx.puntuacionDatos <= 3
+  ? CP_MARKET_KNOWLEDGE
+  : `### Benchmark del sector (referencia rápida)
+- Conversión web: 1.5-3.5% visita → lead | 15-30% lead → cliente
+- CAC típico servicios coaching: €25-80 | LTV medio: ~€250
+- Open rate email profesional: 28-38% | Tiempo decisión lead→compra: 3-14 días
+- SEO keywords intención compra España: 4-8 meses en posicionar
+- Keywords clave: "coach de entrevistas madrid" (140/mes) | "preparar entrevista trabajo online" (260/mes) | "coaching carrera profesional españa" (480/mes)`
+}
 
 ## FRAMEWORK DE PENSAMIENTO — Aplica estas dimensiones en respuestas estratégicas
 
@@ -429,7 +435,7 @@ async function cpStream(userMsg) {
 
   const topic  = cpDetectTopic(userMsg);
   const model  = CP_DEEP_MODE ? 'claude-opus-4-5' : 'claude-sonnet-4-20250514';
-  const maxTok = CP_DEEP_MODE ? 2048 : 1024;
+  const maxTok = CP_DEEP_MODE ? 2048 : 1800;
   if (CP_DEEP_MODE) { CP_DEEP_MODE = false; cpToggleDeepMode(); }
 
   /* ══ SISTEMA INTELIGENTE DE 3 CAPAS ══
@@ -485,6 +491,12 @@ async function cpStream(userMsg) {
   if (typeof memBuildSummary === 'function') ctx._topicHint = topic;
   ctx._siteCtx = siteCtx;
   const system = cpBuildSystem(ctx);
+
+  /* ── Ventana deslizante: máx 6 mensajes (3 pares) en historial ──
+     La memoria persistente ya captura lo estratégico.
+     El historial solo necesita dar continuidad conversacional reciente. */
+  if (CP_HISTORY.length > 6) CP_HISTORY.splice(0, CP_HISTORY.length - 6);
+
   CP_HISTORY.push({ role: 'user', content: userMsg });
 
   /* Placeholder con typing indicator */
