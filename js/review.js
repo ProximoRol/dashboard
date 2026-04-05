@@ -398,28 +398,14 @@ function rvExportMonthly() {
 
 (function rvInit() {
   function injectReviewPage() {
-    /* 1. Nav item — solo inyectar si no existe ya en el sidebar estático */
-    const nav = document.querySelector('.sb-nav');
-    const alreadyHasNav = nav && Array.from(nav.querySelectorAll('.ni'))
-      .some(el => el.getAttribute('onclick')?.includes("'review'"));
-    if (!alreadyHasNav && nav) {
-      const planningItems = Array.from(nav.querySelectorAll('.ni'))
-        .find(el => el.textContent.includes('P&L') || el.textContent.includes('Budget'));
-      if (planningItems) {
-        const rvNav = document.createElement('div');
-        rvNav.className = 'ni';
-        rvNav.setAttribute('onclick', "showP('review', this)");
-        rvNav.innerHTML = `<div class="nico">📅</div>Revisión periódica<span class="nb" style="background:#F5F3FF;color:#7C3AED">Weekly</span>`;
-        planningItems.insertAdjacentElement('afterend', rvNav);
-      }
-    }
-
-    /* 2. Página — si ya existe en el HTML, rellenarla; si no, crearla */
+    /* Nav item y page div ya están en index.html —
+       solo necesitamos rellenar el contenido del div */
     const main = document.querySelector('.main');
     if (!main) return;
 
     let page = document.getElementById('page-review');
     if (!page) {
+      /* Fallback: crear el div si no está en el HTML */
       page = document.createElement('div');
       page.className = 'page';
       page.id = 'page-review';
