@@ -594,13 +594,15 @@ function renderOverview(){
   const instReplies = window._INST_AGG?.replies || 0;
   const instOpens   = window._INST_AGG?.opens   || 0;
 
-  // ── Helper: coste YTD de una línea de presupuesto ──────────
-  // Prioriza gastos reales (eco_actual_v2).
-  // Si no hay actual subido para esa línea/mes, usa el plan de BGT_DATA como fallback.
-  // Búsqueda por nombre fuzzy (incluye/incluido) para ser agnóstico a los nombres
-  // exactos que el usuario haya configurado en su budget_v2.
+  // ── Helper: coste YTD real de una línea ────────────────────
+  // SOLO lee gastos reales subidos (eco_actual_v2 = pr_budget_v2 actuals).
+  // Si el usuario no ha subido nada → devuelve null (se muestra como —).
+  // Sin fallback al plan presupuestado: si no hay dato real, no hay dato.
+  // Matching fuzzy por keywords para ser agnóstico a los nombres exactos
+  // que el usuario haya configurado en su wizard de Budget.
   const getLineCostYTD = (keywords) => {
     let total = 0;
+    let found = false;
     const kws = keywords.map(k => k.toLowerCase());
     ytdMonths.forEach(m => {
       BGT_DATA.rows.forEach(r => {
@@ -609,12 +611,13 @@ function renderOverview(){
         if (matches) {
           const key = r.cat + '|' + r.name + '|' + m;
           const actVal = parseFloat(actual[key] || 0);
-          total += actVal > 0 ? actVal : (r.vals[m] || 0);
+          if (actVal > 0) { total += actVal; found = true; }
         }
       });
     });
-    return total;
+    return found ? total : null; // null = sin datos reales subidos
   };
+  const fmtCost = (v) => v !== null ? '£' + Math.round(v).toLocaleString() : '—';
 
   // ── LinkedIn: leer de pr_li_manual_v1 (o API si está conectada) ──
   const liMan = (typeof liGetManualData === 'function') ? liGetManualData() : {};
@@ -661,14 +664,14 @@ function renderOverview(){
         ch:'Web (GA4)', icon:'📊', color:'#1D9E75',
         reach:    document.getElementById('ga4-bg')?.textContent||'—',
         engage:   '—',
-        cost:     '£'+Math.round(getLineCostYTD(['google ads','paid search','sem','adwords'])).toLocaleString(),
+        cost:     fmtCost(getLineCostYTD(['google ads','paid search','sem','adwords'])),
         leads:    '—', roi: '—', status:'live'
       },
       {
         ch:'Email outreach', icon:'⚡', color:'#7C3AED',
         reach:   instSent>0?instSent.toLocaleString()+' sent':'—',
         engage:  instSent>0?(instOpens/instSent*100).toFixed(1)+'% open':'—',
-        cost:    '£'+Math.round(getLineCostYTD(['mailing','email','instantly','outreach','newsletter'])).toLocaleString(),
+        cost:    fmtCost(getLineCostYTD(['mailing','email','instantly','outreach','newsletter'])),
         leads:   instReplies>0?instReplies+' replies':'—',
         roi:     instReplies>0&&wonAmt>0?'£'+Math.round(wonAmt/Math.max(instReplies,1)).toLocaleString()+'/reply':'—',
         status:  instSent>0?'live':'pend'
@@ -677,20 +680,20 @@ function renderOverview(){
         ch:'LinkedIn', icon:'💼', color:'#2563EB',
         reach:   liFollowers>0 ? liFollowers.toLocaleString()+' followers' : '—',
         engage:  liEng>0 ? liEng+'% engagement' : '—',
-        cost:    '£'+Math.round(getLineCostYTD(['linkedin'])).toLocaleString(),
+        cost:    fmtCost(getLineCostYTD(['linkedin'])),
         leads:   '—', roi:'—',
         status:  liFollowers>0?'live':'pend'
       },
       {
         ch:'PR Agency', icon:'📣', color:'#D97706',
         reach:   '—', engage:'—',
-        cost:    '£'+Math.round(getLineCostYTD(['pr agency','pr ','inked','agency','relaciones'])).toLocaleString(),
+        cost:    fmtCost(getLineCostYTD(['pr agency','pr ','inked','agency','relaciones'])),
         leads:   '—', roi:'—', status:'live'
       },
       {
         ch:'Paid Media', icon:'🎯', color:'#DC2626',
         reach:   '—', engage:'—',
-        cost:    '£'+Math.round(getLineCostYTD(['paid media','meta ads','facebook ads','instagram ads','social ads'])).toLocaleString(),
+        cost:    fmtCost(getLineCostYTD(['paid media','meta ads','facebook ads','instagram ads','social ads'])),
         leads:   '—', roi:'—', status:'pend'
       },
     ];
