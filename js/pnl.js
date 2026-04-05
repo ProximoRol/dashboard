@@ -10,10 +10,16 @@ const PNL_MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct',
 
 /* ── Revenue por tipo de servicio ── */
 const PNL_SERVICES = {
-  sesion_unica       : { label:'Sesión única',         price: 97,  color:'#1D9E75' },
-  pack_completo      : { label:'Pack Completo',         price: 297, color:'#2563EB' },
-  acompanamiento     : { label:'Acompañamiento Total',  price: 497, color:'#7C3AED' },
-  b2b_universidad    : { label:'B2B / Universidad',     price: 800, color:'#D97706' },
+  /* ── Coaching ── */
+  sesion_unica    : { label:'Sesión única',          price: 97,   color:'#1D9E75', group:'coaching' },
+  pack_completo   : { label:'Pack Completo',          price: 297,  color:'#2563EB', group:'coaching' },
+  acompanamiento  : { label:'Acompañamiento Total',   price: 497,  color:'#7C3AED', group:'coaching' },
+  protocolo_1690  : { label:'Protocolo 1690',         price: 1690, color:'#DC2626', group:'coaching' },
+  b2b_universidad : { label:'B2B / Universidad',      price: 800,  color:'#D97706', group:'coaching' },
+  /* ── Scanner de CV ── */
+  scanner_starter : { label:'Scanner Starter (3cr)',  price: 3.90, color:'#0891B2', group:'scanner' },
+  scanner_pro     : { label:'Scanner Pro (5cr)',      price: 5.90, color:'#BE185D', group:'scanner' },
+  scanner_premium : { label:'Scanner Premium (10cr)', price: 9.90, color:'#65A30D', group:'scanner' },
 };
 
 /* ── Cargar / guardar datos ── */
@@ -27,13 +33,14 @@ function pnlSave(d) {
 function pnlDefault() {
   return {
     revenueByMonth: Array(12).fill(null).map(() => ({
-      sesion_unica      : 0,
-      pack_completo     : 0,
-      acompanamiento    : 0,
-      b2b_universidad   : 0,
+      sesion_unica:0, pack_completo:0, acompanamiento:0,
+      protocolo_1690:0, b2b_universidad:0,
+      scanner_starter:0, scanner_pro:0, scanner_premium:0,
     })),
-    cogs_pct  : 5,    /* % ingresos destinado a entrega (herramientas, tiempo directo) */
-    notes     : Array(12).fill(''),
+    cogs_pct    : 5,      /* % de ingresos coaching como COGS proporcional */
+    cogs_manual : [],     /* [{id, name, amount}] COGS fijos mensuales */
+    prices      : {},     /* Overrides de precio por servicio {key: price} */
+    notes       : Array(12).fill(''),
   };
 }
 
@@ -47,16 +54,27 @@ function pnlGetActualCosts() {
 }
 
 function pnlComputeMonth(m, data) {
-  const rev = data.revenueByMonth[m];
+  const rev = data.revenueByMonth[m] || {};
+  const prices = data.prices || {};
 
-  /* Revenue */
-  const gross_revenue = Object.keys(PNL_SERVICES).reduce((s, k) => {
-    return s + (rev[k] || 0) * PNL_SERVICES[k].price;
-  }, 0);
-  const total_clients = Object.keys(PNL_SERVICES).reduce((s, k) => s + (rev[k] || 0), 0);
+  /* Revenue — precio efectivo = override || default */
+  const effectivePrice = k => prices[k] ?? PNL_SERVICES[k]?.price ?? 0;
 
-  /* COGS */
-  const cogs = Math.round(gross_revenue * (data.cogs_pct / 100));
+  const coaching_keys = ['sesion_unica','pack_completo','acompanamiento','protocolo_1690','b2b_universidad'];
+  const scanner_keys  = ['scanner_starter','scanner_pro','scanner_premium'];
+
+  const coaching_revenue = coaching_keys.reduce((s,k) => s + (rev[k]||0) * effectivePrice(k), 0);
+  const scanner_revenue  = scanner_keys.reduce((s,k)  => s + (rev[k]||0) * effectivePrice(k), 0);
+  const gross_revenue    = coaching_revenue + scanner_revenue;
+
+  /* Clientes = solo coaching (scanner son packs, no sesiones) */
+  const total_clients = coaching_keys.reduce((s,k) => s + (rev[k]||0), 0);
+  const scanner_units = scanner_keys.reduce((s,k)  => s + (rev[k]||0), 0);
+
+  /* COGS = % proporcional del coaching + líneas fijas manuales */
+  const cogs_pct_amount  = Math.round(coaching_revenue * (data.cogs_pct / 100));
+  const cogs_manual_total = (data.cogs_manual || []).reduce((s,c) => s + (c.amount||0), 0);
+  const cogs = cogs_pct_amount + cogs_manual_total;
 
   /* Gross profit */
   const gross_profit = gross_revenue - cogs;
@@ -68,28 +86,30 @@ function pnlComputeMonth(m, data) {
   if (typeof BGT_DATA !== 'undefined') {
     BGT_DATA.rows.forEach(row => {
       const actualKey = `${row.cat}|${row.name}|${m}`;
-      const actualVal = parseFloat(actual[actualKey] || 0);
-      opex_actual += actualVal; /* Solo gastos reales — no usar presupuesto como fallback */
+      opex_actual += parseFloat(actual[actualKey] || 0);
     });
   }
+  /* Incluir gastos libres (no presupuestados) */
+  Object.entries(actual).forEach(([k, v]) => {
+    if (k.startsWith('_libre|') && k.endsWith('|' + m)) opex_actual += parseFloat(v) || 0;
+  });
 
   /* Net profit */
-  const ebitda      = gross_profit - opex_actual;
-  const net_margin  = gross_revenue > 0 ? (ebitda / gross_revenue * 100) : 0;
+  const ebitda     = gross_profit - opex_actual;
+  const net_margin = gross_revenue > 0 ? (ebitda / gross_revenue * 100) : 0;
 
-  /* CAC */
-  const marketing_spend = opex_actual; /* Simplificado — todo opex es marketing */
-  const cac = total_clients > 0 ? Math.round(marketing_spend / total_clients) : null;
-
-  /* LTV (simplificado: ticket medio × 1.3 upsell factor) */
+  /* CAC y LTV solo sobre clientes coaching */
+  const cac = total_clients > 0 ? Math.round(opex_actual / total_clients) : null;
   const avg_ticket = total_clients > 0
-    ? gross_revenue / total_clients
-    : Object.values(PNL_SERVICES)[0].price;
+    ? coaching_revenue / total_clients
+    : PNL_SERVICES.sesion_unica.price;
   const ltv = Math.round(avg_ticket * 1.3);
 
   return {
-    gross_revenue, total_clients, cogs, gross_profit, gross_margin,
-    opex_actual, ebitda, net_margin, cac, ltv,
+    gross_revenue, coaching_revenue, scanner_revenue,
+    total_clients, scanner_units, cogs, cogs_pct_amount, cogs_manual_total,
+    gross_profit, gross_margin, opex_actual, ebitda, net_margin,
+    cac, ltv, avg_ticket,
     ltv_cac_ratio: cac ? (ltv / cac).toFixed(1) : null,
   };
 }
@@ -148,46 +168,66 @@ function renderPNLPage() {
   ).join('');
 
   /* ── Tabla de revenue del mes ── */
-  const rev = data.revenueByMonth[PNL_ACTIVE_MONTH];
+  const rev    = data.revenueByMonth[PNL_ACTIVE_MONTH];
+  const prices = data.prices || {};
+  const effectivePrice = k => prices[k] ?? PNL_SERVICES[k]?.price ?? 0;
+
+  const buildServiceRow = ([k, svc]) => {
+    const units   = rev[k] || 0;
+    const price   = effectivePrice(k);
+    const revenue = units * price;
+    return `<tr>
+      <td><span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:${svc.color};margin-right:6px"></span>${svc.label}</td>
+      <td style="color:var(--mt)">
+        <span id="pnl-price-${k}">£${price % 1 === 0 ? price : price.toFixed(2)}</span>
+        <button onclick="pnlTogglePriceEdit('${k}',${price})"
+          title="Editar precio" style="background:none;border:none;cursor:pointer;color:var(--ht);font-size:11px;padding:1px 4px;vertical-align:middle">✏️</button>
+      </td>
+      <td>
+        <div style="display:flex;align-items:center;gap:6px">
+          <button onclick="pnlUpdateUnits('${k}',${units - 1})" style="width:22px;height:22px;border:1px solid var(--bd2);border-radius:5px;background:var(--sf2);cursor:pointer;font-size:14px;display:flex;align-items:center;justify-content:center;color:var(--mt)">−</button>
+          <input type="number" min="0" value="${units}" onchange="pnlUpdateUnits('${k}',+this.value)"
+            style="width:50px;text-align:center;padding:4px;border:1px solid var(--bd2);border-radius:var(--r);background:var(--sf2);color:var(--tx);font-size:13px;font-family:inherit"/>
+          <button onclick="pnlUpdateUnits('${k}',${units + 1})" style="width:22px;height:22px;border:1px solid var(--bd2);border-radius:5px;background:var(--sf2);cursor:pointer;font-size:14px;display:flex;align-items:center;justify-content:center;color:var(--mt)">+</button>
+        </div>
+      </td>
+      <td><strong style="color:${svc.color}">£${revenue % 1 === 0 ? revenue.toLocaleString() : revenue.toFixed(2)}</strong></td>
+    </tr>`;
+  };
+
+  const coachingEntries = Object.entries(PNL_SERVICES).filter(([,s]) => s.group === 'coaching');
+  const scannerEntries  = Object.entries(PNL_SERVICES).filter(([,s]) => s.group === 'scanner');
+
   document.getElementById('pnl-revenue-table').innerHTML = `
     <table class="dt" style="width:100%">
       <thead><tr>
-        <th>Servicio</th>
-        <th>Precio unitario</th>
-        <th>Unidades vendidas</th>
-        <th>Revenue</th>
+        <th>Servicio</th><th>Precio unitario</th><th>Unidades</th><th>Revenue</th>
       </tr></thead>
       <tbody>
-        ${Object.entries(PNL_SERVICES).map(([k, svc]) => {
-          const units = rev[k] || 0;
-          const revenue = units * svc.price;
-          return `<tr>
-            <td><span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:${svc.color};margin-right:6px"></span>${svc.label}</td>
-            <td style="color:var(--mt)">£${svc.price}</td>
-            <td>
-              <div style="display:flex;align-items:center;gap:6px">
-                <button onclick="pnlUpdateUnits('${k}',${units - 1})" style="width:22px;height:22px;border:1px solid var(--bd2);border-radius:5px;background:var(--sf2);cursor:pointer;font-size:14px;display:flex;align-items:center;justify-content:center;color:var(--mt)">−</button>
-                <input type="number" min="0" value="${units}" onchange="pnlUpdateUnits('${k}',+this.value)"
-                  style="width:50px;text-align:center;padding:4px;border:1px solid var(--bd2);border-radius:var(--r);background:var(--sf2);color:var(--tx);font-size:13px;font-family:inherit"/>
-                <button onclick="pnlUpdateUnits('${k}',${units + 1})" style="width:22px;height:22px;border:1px solid var(--bd2);border-radius:5px;background:var(--sf2);cursor:pointer;font-size:14px;display:flex;align-items:center;justify-content:center;color:var(--mt)">+</button>
-              </div>
-            </td>
-            <td><strong style="color:${svc.color}">£${revenue.toLocaleString()}</strong></td>
-          </tr>`;
-        }).join('')}
+        <tr style="background:var(--sf2)">
+          <td colspan="4" style="padding:5px 10px;font-size:10px;font-weight:600;color:var(--ht);text-transform:uppercase;letter-spacing:.05em">Coaching</td>
+        </tr>
+        ${coachingEntries.map(buildServiceRow).join('')}
+        <tr style="background:var(--sf2)">
+          <td colspan="4" style="padding:5px 10px;font-size:10px;font-weight:600;color:var(--ht);text-transform:uppercase;letter-spacing:.05em">Scanner de CV</td>
+        </tr>
+        ${scannerEntries.map(buildServiceRow).join('')}
         <tr style="border-top:2px solid var(--bd)">
           <td><strong>Total</strong></td>
           <td></td>
-          <td><strong>${mc.total_clients} clientes</strong></td>
-          <td><strong style="color:var(--green);font-size:16px">£${mc.gross_revenue.toLocaleString()}</strong></td>
+          <td><strong>${mc.total_clients} clientes coaching · ${mc.scanner_units} packs scanner</strong></td>
+          <td><strong style="color:var(--green);font-size:16px">£${mc.gross_revenue % 1 === 0 ? mc.gross_revenue.toLocaleString() : mc.gross_revenue.toFixed(2)}</strong></td>
         </tr>
       </tbody>
     </table>`;
 
   /* ── P&L Waterfall del mes ── */
+  const cogsLabel = mc.cogs_manual_total > 0
+    ? `COGS (${data.cogs_pct}% coaching + £${mc.cogs_manual_total.toFixed(0)} fijos)`
+    : `COGS (${data.cogs_pct}%)`;
   const rows = [
     { label:'Revenue bruto',  val: mc.gross_revenue,   type:'revenue' },
-    { label:`COGS (${data.cogs_pct}%)`, val: -mc.cogs, type:'cost' },
+    { label: cogsLabel,       val: -mc.cogs,            type:'cost' },
     { label:'Gross Profit',   val: mc.gross_profit,    type:'subtotal', pct: mc.gross_margin.toFixed(0) + '%' },
     { label:'OpEx (marketing + tools)', val: -mc.opex_actual, type:'cost' },
     { label:'EBITDA',         val: mc.ebitda,           type:'final', pct: mc.net_margin.toFixed(0) + '%' },
@@ -238,6 +278,27 @@ function renderPNLPage() {
   const cogsSlider = document.getElementById('pnl-cogs-slider');
   if (cogsSlider) cogsSlider.value = data.cogs_pct;
 
+  /* ── COGS manuales ── */
+  const cogsManualEl = document.getElementById('pnl-cogs-manual');
+  if (cogsManualEl) {
+    const manual = data.cogs_manual || [];
+    cogsManualEl.innerHTML = manual.map(c => `
+      <div style="display:flex;gap:8px;align-items:center;padding:6px 0;border-bottom:1px solid var(--bd)">
+        <input value="${c.name}" placeholder="Descripción (ej: Anthropic API Scanner)"
+          style="flex:1;padding:4px 8px;border:1px solid var(--bd2);border-radius:var(--r);font-size:12px;background:var(--sf2);color:var(--tx);font-family:inherit"
+          oninput="pnlUpdateCOGSItem('${c.id}','name',this.value)"/>
+        <input type="number" value="${c.amount||''}" placeholder="£/mes" min="0"
+          style="width:80px;padding:4px 8px;border:1px solid var(--bd2);border-radius:var(--r);font-size:12px;background:var(--sf2);color:var(--tx);font-family:inherit;text-align:right"
+          onchange="pnlUpdateCOGSItem('${c.id}','amount',this.value)"/>
+        <button onclick="pnlRemoveCOGSItem('${c.id}')"
+          style="background:none;border:none;color:var(--red);cursor:pointer;font-size:16px;padding:2px 6px">×</button>
+      </div>`).join('') +
+      `<button onclick="pnlAddCOGSItem()"
+        style="width:100%;padding:6px;margin-top:6px;border:1.5px dashed var(--bd2);border-radius:var(--r);background:none;color:var(--mt);cursor:pointer;font-size:12px;font-family:inherit">
+        + Añadir COGS fijo (ej: API, hosting, herramienta)</button>` +
+      (manual.length > 0 ? `<div style="margin-top:6px;font-size:11px;color:var(--ht)">Total COGS fijos: <strong style="color:var(--tx)">£${manual.reduce((s,c)=>s+(c.amount||0),0).toLocaleString()}/mes</strong></div>` : '');
+  }
+
   /* ── AI Analysis button context ── */
   window._PNL_CONTEXT = { ytd, mc, data, activeMonth: PNL_MONTHS[PNL_ACTIVE_MONTH] };
 }
@@ -265,6 +326,60 @@ function pnlUpdateUnits(service, units) {
 function pnlUpdateCOGS(pct) {
   const data = pnlLoad();
   data.cogs_pct = parseInt(pct) || 5;
+  pnlSave(data);
+  renderPNLPage();
+}
+
+/* ── Edición de precios ── */
+function pnlTogglePriceEdit(key, currentPrice) {
+  const span = document.getElementById('pnl-price-' + key);
+  if (!span) return;
+  if (span.querySelector('input')) { renderPNLPage(); return; }
+  span.innerHTML = `<input type="number" value="${currentPrice}" min="0" step="0.01"
+    style="width:75px;padding:2px 6px;border:1.5px solid var(--green);border-radius:4px;font-size:12px;font-family:inherit"
+    onkeydown="if(event.key==='Enter')pnlSavePrice('${key}',+this.value);if(event.key==='Escape')renderPNLPage()"
+    autofocus/>
+    <button onclick="pnlSavePrice('${key}',+this.previousElementSibling.value)"
+      style="padding:2px 7px;background:var(--green);color:white;border:none;border-radius:4px;font-size:11px;cursor:pointer;margin-left:3px">✓</button>`;
+  span.querySelector('input')?.select();
+}
+
+function pnlSavePrice(key, price) {
+  if (isNaN(price) || price < 0) return;
+  const data = pnlLoad();
+  if (!data.prices) data.prices = {};
+  if (price === PNL_SERVICES[key]?.price) delete data.prices[key];
+  else data.prices[key] = price;
+  pnlSave(data);
+  renderPNLPage();
+}
+
+/* ── COGS manuales ── */
+function pnlAddCOGSItem() {
+  const data = pnlLoad();
+  if (!data.cogs_manual) data.cogs_manual = [];
+  data.cogs_manual.push({ id:'cogs_'+Date.now(), name:'', amount:0 });
+  pnlSave(data);
+  renderPNLPage();
+  setTimeout(() => {
+    const inputs = document.querySelectorAll('#pnl-cogs-manual input[placeholder]');
+    const last = inputs[inputs.length - 2]; /* description input of last row */
+    if (last) last.focus();
+  }, 50);
+}
+
+function pnlUpdateCOGSItem(id, field, value) {
+  const data = pnlLoad();
+  const item = (data.cogs_manual||[]).find(c => c.id === id);
+  if (!item) return;
+  item[field] = field === 'amount' ? (parseFloat(value)||0) : value;
+  pnlSave(data);
+  if (field === 'amount') renderPNLPage();
+}
+
+function pnlRemoveCOGSItem(id) {
+  const data = pnlLoad();
+  data.cogs_manual = (data.cogs_manual||[]).filter(c => c.id !== id);
   pnlSave(data);
   renderPNLPage();
 }
@@ -359,9 +474,35 @@ Sé directo. En español. Sin introducción.`;
 
 (function pnlInit() {
   function injectPNLPage() {
-    /* page-pnl and nav item are already in index.html */
-    const page = document.getElementById('page-pnl');
-    if (!page) return;
+    /* Nav item — solo inyectar si no existe ya en el HTML estático */
+    const nav = document.querySelector('.sb-nav');
+    const alreadyHasNav = nav && Array.from(nav.querySelectorAll('.ni'))
+      .some(el => el.getAttribute('onclick')?.includes("'pnl'"));
+    if (!alreadyHasNav && nav) {
+      const planningSection = Array.from(nav.querySelectorAll('.ns'))
+        .find(el => el.textContent.includes('Planning'));
+      if (planningSection) {
+        const pnlNav = document.createElement('div');
+        pnlNav.className = 'ni';
+        pnlNav.setAttribute('onclick', "showP('pnl', this)");
+        pnlNav.innerHTML = `<div class="nico">📈</div>P&L · Revenue<span class="nb" style="background:#EFF6FF;color:#2563EB">P&L</span>`;
+        planningSection.insertAdjacentElement('afterend', pnlNav);
+      }
+    }
+
+    /* Página — usar div existente o crear uno nuevo */
+    const main = document.querySelector('.main');
+    if (!main) return;
+
+    let page = document.getElementById('page-pnl');
+    if (!page) {
+      page = document.createElement('div');
+      page.className = 'page';
+      page.id = 'page-pnl';
+      const mainContent = main.querySelector('.page:last-of-type');
+      if (mainContent) mainContent.insertAdjacentElement('afterend', page);
+      else main.appendChild(page);
+    }
 
     page.innerHTML = `
       <div class="sh">
@@ -372,17 +513,12 @@ Sé directo. En español. Sin introducción.`;
 
       <div id="pnl-ai-box" style="display:none;background:var(--pp);border:1px solid #DDD6FE;border-radius:var(--r);padding:14px 16px;margin-bottom:14px"></div>
       <div class="kr" id="pnl-kpis" style="margin-bottom:16px"></div>
+
       <div style="display:flex;align-items:center;gap:8px;margin-bottom:14px;flex-wrap:wrap">
         <span style="font-size:11px;font-weight:600;color:var(--ht);text-transform:uppercase;letter-spacing:.05em">Mes:</span>
         <div class="dps" id="pnl-month-tabs"></div>
-        <div style="margin-left:auto;display:flex;align-items:center;gap:8px">
-          <label style="font-size:11px;color:var(--ht)">COGS %</label>
-          <input id="pnl-cogs-slider" type="range" min="0" max="30" value="5"
-            oninput="document.getElementById('pnl-cogs-val').textContent=this.value+'%';pnlUpdateCOGS(this.value)"
-            style="width:80px"/>
-          <span id="pnl-cogs-val" style="font-size:12px;font-weight:600;color:var(--tx);min-width:28px">5%</span>
-        </div>
       </div>
+
       <div class="g2" style="margin-bottom:14px">
         <div class="cd">
           <div class="ch"><span class="ct">Revenue — ventas del mes</span><span class="bg bg-g">Manual · editable</span></div>
@@ -393,10 +529,25 @@ Sé directo. En español. Sin introducción.`;
           <div id="pnl-waterfall" style="padding:4px 0"></div>
         </div>
       </div>
+
+      <!-- COGS -->
+      <div class="cd" style="margin-bottom:14px">
+        <div class="ch"><span class="ct">COGS — Coste de entrega</span><span class="bg bg-r">Editable</span></div>
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px;flex-wrap:wrap">
+          <label style="font-size:12px;color:var(--mt)">% proporcional sobre coaching:</label>
+          <input id="pnl-cogs-slider" type="range" min="0" max="30" value="5"
+            oninput="document.getElementById('pnl-cogs-val').textContent=this.value+'%';pnlUpdateCOGS(this.value)"
+            style="width:100px"/>
+          <span id="pnl-cogs-val" style="font-size:12px;font-weight:600;color:var(--tx);min-width:32px">5%</span>
+        </div>
+        <div id="pnl-cogs-manual"></div>
+      </div>
+
       <div class="cd" style="margin-bottom:14px">
         <div class="ch"><span class="ct">Unit Economics</span><span class="bg bg-p">CAC · LTV · Payback</span></div>
         <div id="pnl-unit-economics"></div>
       </div>
+
       <div class="cd">
         <div class="ch"><span class="ct">Revenue vs OpEx vs EBITDA — mensual 2026</span><span class="bg bg-g">Todos los meses</span></div>
         <div style="position:relative;height:240px"><canvas id="pnl-chart"></canvas></div>

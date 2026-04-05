@@ -168,9 +168,23 @@ function bgt2S1(){
       <button onclick="BGT2_WZ.categories.splice(${i},1);bgt2DrawWizard(1)"
         style="background:none;border:none;color:var(--red);cursor:pointer;font-size:16px;padding:2px 6px">×</button>
     </div>`).join('');
+
+  /* Botón de importar solo si hay datos existentes y el wizard está vacío */
+  const canImport = typeof BGT_DATA !== 'undefined' && BGT_DATA.rows && BGT_DATA.rows.length > 0 && BGT2_WZ.categories.length === 0;
+
   return`
     <div style="font-size:13px;font-weight:600;margin-bottom:4px">Define las categorías de gasto</div>
     <div style="font-size:12px;color:var(--mt);margin-bottom:14px">Agrupa tus gastos: Marketing, Herramientas, Diseño, etc.</div>
+    ${canImport ? `
+    <div style="background:var(--bp);border:1px solid #BFDBFE;border-radius:var(--r);padding:12px 14px;margin-bottom:14px;display:flex;gap:10px;align-items:center">
+      <div style="flex:1">
+        <div style="font-size:12px;font-weight:600;color:var(--blue);margin-bottom:2px">💡 Tienes un presupuesto existente</div>
+        <div style="font-size:11px;color:var(--blue)">Puedes importarlo y editarlo aquí en lugar de empezar desde cero.</div>
+      </div>
+      <button onclick="bgt2ImportFromBGTData()" style="padding:7px 14px;background:var(--blue);color:white;border:none;border-radius:var(--r);font-size:12px;font-weight:500;cursor:pointer;font-family:inherit;white-space:nowrap">
+        Importar existente →
+      </button>
+    </div>` : ''}
     ${r}
     <button onclick="BGT2_WZ.categories.push({id:'c'+Date.now(),name:'',color:'${BGT2_COLORS[BGT2_WZ.categories.length%8]}'});bgt2DrawWizard(1)"
       style="width:100%;padding:8px;border:1.5px dashed var(--bd2);border-radius:var(--r);background:none;color:var(--mt);cursor:pointer;font-size:12px;margin-top:4px;font-family:inherit">
@@ -336,6 +350,19 @@ function bgt2FinishWizard(){
   renderBudgetPage();
 }
 
+function bgt2ImportFromBGTData(){
+  if(typeof BGT_DATA==='undefined'||!BGT_DATA.rows||!BGT_DATA.catColors) return;
+  const cats=Object.entries(BGT_DATA.catColors).map(([name,color],i)=>({
+    id:'c_imp_'+i, name, color
+  }));
+  const lines=BGT_DATA.rows.map((row,i)=>{
+    const cat=cats.find(c=>c.name===row.cat);
+    return{id:'l_imp_'+i, catId:cat?cat.id:cats[0]?.id, name:row.name, vals:[...(row.vals||Array(12).fill(0))]};
+  });
+  BGT2_WZ={step:1, categories:cats, lines};
+  bgt2DrawWizard(1);
+}
+
 function bgt2UseTemplate(){
   BGT2_WZ.categories=[
     {id:'c1',name:'Marketing Digital',color:'#DC2626'},
@@ -363,7 +390,30 @@ function bgt2UseTemplate(){
 
 function bgt2StartEdit(){
   const cfg=bgt2Load();if(!cfg)return;
-  BGT2_WZ={step:1,categories:cfg.categories.map(c=>({...c})),lines:cfg.lines.map(l=>({...l,vals:[...l.vals]}))};
+
+  /* Cargar datos existentes en el wizard ANTES de abrir la UI */
+  BGT2_WZ={step:1,
+    categories:cfg.categories.map(c=>({...c})),
+    lines:cfg.lines.map(l=>({...l,vals:[...l.vals]}))
+  };
+
+  /* Setup UI — igual que bgt2ShowSetup() pero SIN resetear BGT2_WZ */
+  const page=document.getElementById('page-budget');if(!page)return;
+  ['budget-insights-wrap','budget-bar-chart','budget-ytd-bars','budget-detail-table']
+    .forEach(id=>{const e=document.getElementById(id);if(e)e.style.display='none';});
+  document.getElementById('bgt2-tb')?.remove();
+  let sw=document.getElementById('bgt2-setup');
+  if(!sw){
+    sw=document.createElement('div');sw.id='bgt2-setup';
+    const sh=page.querySelector('.sh');
+    if(sh) sh.insertAdjacentElement('afterend',sw);
+    else page.appendChild(sw);
+  }
+  sw.style.display='block';
+  bgt2InjectCSS();
+  bgt2DrawWizard(1);
+
+  /* Override finish para guardar los cambios de vuelta */
   const orig=bgt2FinishWizard;
   window.bgt2FinishWizard=()=>{
     const updated={...cfg,categories:BGT2_WZ.categories,lines:BGT2_WZ.lines.filter(l=>l.name.trim())};
@@ -374,7 +424,6 @@ function bgt2StartEdit(){
     window.bgt2FinishWizard=orig;
     renderBudgetPage();
   };
-  bgt2ShowSetup();
 }
 
 /* ══════════════════════════════
@@ -408,10 +457,13 @@ function bgt2ShowActualsModal(){
           <td style="padding:7px 12px;font-size:12px">${l.name}</td>
           <td style="padding:7px 8px;text-align:right;font-size:11px;color:var(--ht)">${target?'€'+target.toLocaleString():'—'}</td>
           <td style="padding:5px 12px;text-align:right">
-            <input type="number" min="0" step="0.01" value="${actual||''}" placeholder="0"
-              class="bgt2-ai" style="border:1px solid ${over?'var(--red)':'var(--bd2)'};border-radius:6px;background:var(--sf2)"
-              onchange="(function(k,v){const a=window._bgt2a;const n=parseFloat(v)||0;if(n===0)delete a[k];else a[k]=n;window.localStorage.setItem('${BGT2_ACT}',JSON.stringify(a));})(\'${cat.name}|${l.name}|\'+${selM},this.value)"
-              onfocus="this.select()"/>
+            <div style="display:flex;align-items:center;justify-content:flex-end;gap:4px">
+              <input type="number" min="0" step="0.01" value="${actual||''}" placeholder="0"
+                class="bgt2-ai" style="border:1px solid ${over?'var(--red)':'var(--bd2)'};border-radius:6px;background:var(--sf2)"
+                onchange="(function(k,v){const a=window._bgt2a;const n=parseFloat(v)||0;if(n===0)delete a[k];else a[k]=n;window.localStorage.setItem('${BGT2_ACT}',JSON.stringify(a));})(\'${cat.name}|${l.name}|\'+${selM},this.value)"
+                onfocus="this.select()"/>
+              ${actual>0?`<button onclick="(function(){const a=window._bgt2a;delete a['${cat.name}|${l.name}|'+${selM}];window.localStorage.setItem('${BGT2_ACT}',JSON.stringify(a));draw();})()" title="Borrar" style="background:none;border:none;color:var(--ht);cursor:pointer;font-size:14px;padding:2px 4px;line-height:1">×</button>`:'<span style="width:20px;display:inline-block"></span>'}
+            </div>
           </td>
         </tr>`;
       }).join('');
@@ -442,6 +494,31 @@ function bgt2ShowActualsModal(){
             <input type="file" accept=".xlsx,.xls,.csv" style="display:none" onchange="bgt2ImportActualsFile(this,selM,cfg,draw)"/>
           </label>
           <button onclick="document.getElementById('bgt2-modal').remove();requestAnimationFrame(()=>requestAnimationFrame(()=>renderBudgetPage()))" class="btn-s">✓ Cerrar y actualizar</button>
+        </div>
+
+        <!-- Gastos adicionales — entradas manuales no presupuestadas -->
+        <div style="border-top:2px solid var(--bd2);padding:14px 16px;flex-shrink:0">
+          <div style="font-size:11px;font-weight:600;color:var(--ht);text-transform:uppercase;letter-spacing:.04em;margin-bottom:10px">Gastos adicionales (no presupuestados)</div>
+          <div id="bgt2-libre-list">
+            ${(()=>{
+              const libre=JSON.parse(localStorage.getItem('eco_libre_v1')||'[]')
+                .filter(e=>e.month===selM);
+              if(!libre.length) return '<div style="font-size:12px;color:var(--ht);padding:4px 0 8px">Sin entradas manuales este mes.</div>';
+              return libre.map(e=>`
+                <div style="display:flex;gap:8px;align-items:center;padding:5px 0;border-bottom:1px solid var(--bd)">
+                  <span style="flex:1;font-size:12px;color:var(--tx)">${e.desc||'—'}</span>
+                  <span style="font-size:12px;font-weight:500;color:var(--tx)">€${(e.amount||0).toLocaleString()}</span>
+                  <button onclick="bgt2DeleteLibre('${e.id}',draw)" style="background:none;border:none;color:var(--ht);cursor:pointer;font-size:15px;padding:2px 5px">×</button>
+                </div>`).join('');
+            })()}
+          </div>
+          <div style="display:flex;gap:6px;margin-top:8px;flex-wrap:wrap">
+            <input id="bgt2-libre-desc" type="text" placeholder="Descripción (ej: Impuesto trimestral)"
+              style="flex:1;min-width:140px;padding:6px 10px;border:1px solid var(--bd2);border-radius:var(--r);font-size:12px;background:var(--sf2);color:var(--tx);font-family:inherit"/>
+            <input id="bgt2-libre-amt" type="number" min="0" step="0.01" placeholder="€ importe"
+              style="width:100px;padding:6px 10px;border:1px solid var(--bd2);border-radius:var(--r);font-size:12px;background:var(--sf2);color:var(--tx);font-family:inherit;text-align:right"/>
+            <button onclick="bgt2AddLibre(${JSON.stringify(selM)},draw)" class="btn-s" style="white-space:nowrap">+ Añadir</button>
+          </div>
         </div>
       </div>`;
   }
@@ -509,6 +586,38 @@ function bgt2Sim(a,b){
   const wb=new Set(b.split(/\s+/).filter(w=>w.length>2));
   if(!wa.size||!wb.size)return 0;
   return[...wa].filter(w=>wb.has(w)).length/Math.max(wa.size,wb.size);
+}
+
+/* ── Gastos libres (no presupuestados) ── */
+function bgt2AddLibre(month, redrawFn) {
+  const desc = document.getElementById('bgt2-libre-desc')?.value.trim();
+  const amt  = parseFloat(document.getElementById('bgt2-libre-amt')?.value || 0);
+  if (!desc || !amt) { alert('Escribe una descripción e importe.'); return; }
+  const entries = JSON.parse(localStorage.getItem('eco_libre_v1') || '[]');
+  entries.push({ id: 'lib_' + Date.now(), desc, amount: amt, month });
+  localStorage.setItem('eco_libre_v1', JSON.stringify(entries));
+  /* También guardar en eco_actual_v2 para que el P&L lo lea como OpEx */
+  const actuals = JSON.parse(localStorage.getItem('eco_actual_v2') || '{}');
+  actuals[`_libre|${desc}|${month}`] = (actuals[`_libre|${desc}|${month}`] || 0) + amt;
+  localStorage.setItem('eco_actual_v2', JSON.stringify(actuals));
+  document.getElementById('bgt2-libre-desc').value = '';
+  document.getElementById('bgt2-libre-amt').value = '';
+  if (redrawFn) redrawFn();
+}
+
+function bgt2DeleteLibre(id, redrawFn) {
+  let entries = JSON.parse(localStorage.getItem('eco_libre_v1') || '[]');
+  const entry = entries.find(e => e.id === id);
+  entries = entries.filter(e => e.id !== id);
+  localStorage.setItem('eco_libre_v1', JSON.stringify(entries));
+  /* Eliminar también de eco_actual_v2 */
+  if (entry) {
+    const actuals = JSON.parse(localStorage.getItem('eco_actual_v2') || '{}');
+    const key = `_libre|${entry.desc}|${entry.month}`;
+    delete actuals[key];
+    localStorage.setItem('eco_actual_v2', JSON.stringify(actuals));
+  }
+  if (redrawFn) redrawFn();
 }
 
 /* ── Init: sincronizar BGT_DATA al arrancar ── */
