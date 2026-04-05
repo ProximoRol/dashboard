@@ -452,11 +452,15 @@
     </div>
     <!-- MONTHLY REPORT -->
     <div class="page" id="page-report">
-      <div class="sh"><span class="sl">Monthly Report</span><div class="sln"></div><button class="info-btn" onclick="openInfoModal('report')" title="What is this page?">i</button></div>
+      <div class="sh">
+        <span class="sl" id="rep-month-title">Monthly Report</span>
+        <div class="sln"></div>
+        <button id="rep-ai-btn" onclick="repAISummary()" style="padding:5px 14px;background:var(--pp);color:var(--purple);border:1px solid #DDD6FE;border-radius:var(--r);font-size:12px;font-weight:500;cursor:pointer;font-family:inherit">✦ Generar resumen IA</button>
+      </div>
 
       <!-- Month selector -->
       <div style="display:flex;align-items:center;gap:8px;margin-bottom:16px;flex-wrap:wrap">
-        <span style="font-size:11px;font-weight:600;color:var(--ht);text-transform:uppercase;letter-spacing:.05em">Month:</span>
+        <span style="font-size:11px;font-weight:600;color:var(--ht);text-transform:uppercase;letter-spacing:.05em">Mes:</span>
         <div class="dps" id="month-selector">
           <div class="dp active" onclick="selectMonth(0,this)">Jan</div>
           <div class="dp" onclick="selectMonth(1,this)">Feb</div>
@@ -471,54 +475,44 @@
           <div class="dp" onclick="selectMonth(10,this)">Nov</div>
           <div class="dp" onclick="selectMonth(11,this)">Dec</div>
         </div>
-        <button onclick="saveReport()" style="margin-left:auto;padding:5px 14px;background:var(--green);color:white;border:none;border-radius:var(--r);font-size:12px;font-weight:500;cursor:pointer">Save month data</button>
       </div>
 
-      <!-- KPI channel cards -->
-      <div id="rep-channel-cards" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin-bottom:16px"></div>
+      <!-- AI Summary output -->
+      <div id="rep-ai-box" style="display:none;background:var(--pp);border:1px solid #DDD6FE;border-radius:var(--r);padding:14px 16px;margin-bottom:14px"></div>
 
-      <!-- Pipeline input table -->
+      <!-- KPI Scorecard — auto desde P&L -->
+      <div class="kr" id="rep-kpis" style="margin-bottom:16px"></div>
+
+      <!-- Notas del mes (única entrada manual) -->
       <div class="cd" style="margin-bottom:12px">
-        <div class="ch"><span class="ct">Pipeline & Performance input</span><span class="bg bg-g">Manual entry</span></div>
-        <div style="overflow-x:auto">
-          <table class="dt">
-            <thead><tr>
-              <th>Area</th><th>Spend (£)</th><th>Leads</th><th>Opportunities</th><th>Cost/Lead</th><th>Est. Pipeline</th>
-            </tr></thead>
-            <tbody id="rep-pipeline-body"></tbody>
-          </table>
+        <div class="ch"><span class="ct">Notas del mes</span><span class="bg bg-g">Guardar automático</span></div>
+        <textarea id="rep-notes" rows="3" placeholder="Highlights, aprendizajes clave, qué funcionó, qué no, próximos pasos..."
+          onblur="repSaveNotes()"
+          style="width:100%;padding:10px 12px;border:1px solid var(--bd2);border-radius:var(--r);font-size:12px;background:var(--sf2);color:var(--tx);outline:none;resize:vertical;font-family:'DM Sans',sans-serif;line-height:1.6;box-sizing:border-box"></textarea>
+      </div>
+
+      <!-- Revenue vs OpEx MoM + Traffic -->
+      <div class="g2" style="margin-bottom:12px">
+        <div class="cd">
+          <div class="ch"><span class="ct">Revenue vs OpEx vs EBITDA</span><span class="bg bg-g">P&amp;L 2026</span></div>
+          <div style="position:relative;height:200px"><canvas id="rep-revenue-chart"></canvas></div>
         </div>
-        <div style="display:flex;gap:12px;margin-top:12px;flex-wrap:wrap">
-          <div style="flex:1;min-width:150px">
-            <label style="font-size:10px;font-weight:600;color:var(--ht);text-transform:uppercase;letter-spacing:.05em;display:block;margin-bottom:4px">Form conversions</label>
-            <input type="number" id="rep-conversions" placeholder="0" style="width:100%;padding:7px 10px;border:1px solid var(--bd2);border-radius:var(--r);font-size:12px;background:var(--sf2);color:var(--tx);outline:none"/>
-          </div>
-          <div style="flex:1;min-width:150px">
-            <label style="font-size:10px;font-weight:600;color:var(--ht);text-transform:uppercase;letter-spacing:.05em;display:block;margin-bottom:4px">Service page hits</label>
-            <input type="number" id="rep-svc-hits" placeholder="0" style="width:100%;padding:7px 10px;border:1px solid var(--bd2);border-radius:var(--r);font-size:12px;background:var(--sf2);color:var(--tx);outline:none"/>
-          </div>
-          <div style="flex:2;min-width:200px">
-            <label style="font-size:10px;font-weight:600;color:var(--ht);text-transform:uppercase;letter-spacing:.05em;display:block;margin-bottom:4px">Notes</label>
-            <input type="text" id="rep-notes" placeholder="Key highlights or observations for this month..." style="width:100%;padding:7px 10px;border:1px solid var(--bd2);border-radius:var(--r);font-size:12px;background:var(--sf2);color:var(--tx);outline:none"/>
-          </div>
+        <div class="cd">
+          <div class="ch"><span class="ct">Tráfico por fuente</span><span class="bg bg-g">GA4</span></div>
+          <div id="rep-sessions-src"></div>
+          <div style="position:relative;height:160px"><canvas id="rep-sessions-chart"></canvas></div>
         </div>
       </div>
 
-      <!-- Charts row -->
-      <div class="g2" style="margin-bottom:12px">
-        <div class="cd"><div class="ch"><span class="ct">Spend by month</span><span class="bg bg-g">2026</span></div><div style="position:relative;height:200px"><canvas id="rep-spend-chart"></canvas></div></div>
-        <div class="cd"><div class="ch"><span class="ct">Leads & Opportunities</span><span class="bg bg-g">2026</span></div><div style="position:relative;height:200px"><canvas id="rep-leads-chart"></canvas></div></div>
-      </div>
-
-      <!-- Traffic sources + Email -->
-      <div class="g2" style="margin-bottom:12px">
-        <div class="cd"><div class="ch"><span class="ct">Traffic by source</span><span class="bg bg-g">GA4</span></div><div id="rep-sessions-src"></div><div style="position:relative;height:180px"><canvas id="rep-sessions-chart"></canvas></div></div>
-        <div class="cd"><div class="ch"><span class="ct">Email campaigns</span><span class="bg bg-p">Instantly</span></div><div style="position:relative;height:180px"><canvas id="rep-email-chart"></canvas></div></div>
+      <!-- Email chart -->
+      <div class="cd" style="margin-bottom:12px">
+        <div class="ch"><span class="ct">Email campaigns</span><span class="bg bg-p">Instantly</span></div>
+        <div style="position:relative;height:160px"><canvas id="rep-email-chart"></canvas></div>
       </div>
 
       <!-- Year-to-date table -->
       <div class="cd">
-        <div class="ch"><span class="ct">Year-to-date summary</span><span class="bg bg-g">All months</span></div>
+        <div class="ch"><span class="ct">Resumen anual — todas las métricas</span><span class="bg bg-g">Desde P&amp;L</span></div>
         <div style="overflow-x:auto">
           <table class="dt">
             <thead><tr id="rep-year-head"></tr></thead>
