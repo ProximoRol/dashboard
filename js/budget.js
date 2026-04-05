@@ -711,10 +711,12 @@ function renderOverview(){
 /* buildSettings(), tgS(), svS(), clrS() — moved to settings.js */
 
 
-/* ── MONTHLY REPORT ── */
+/* ══════════════════════════════════════════════════════
+   MONTHLY REPORT v2 — Auto-poblado desde P&L, Budget, GA4
+   No entrada manual excepto Notas
+══════════════════════════════════════════════════════ */
 const RK = 'eco_report_v1';
 let ACTIVE_MONTH = new Date().getMonth();
-const AREAS = ['General','Referral Scheme','Veolia / Biffa','Trade Associations','Overall'];
 const MONTHS_SHORT = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
 
 function selectMonth(idx, btn){
@@ -727,214 +729,250 @@ function selectMonth(idx, btn){
 function getReportData(){
   return JSON.parse(localStorage.getItem(RK)||'{}');
 }
-function saveReport(){
-  const data = getReportData();
-  const mk = `m${ACTIVE_MONTH}`;
-  if(!data[mk]) data[mk]={};
-  // Save pipeline rows
-  AREAS.forEach((area,i)=>{
-    const spend = parseFloat(document.getElementById(`rsp_${i}`)?.value||0)||0;
-    const leads = parseInt(document.getElementById(`rld_${i}`)?.value||0)||0;
-    const opps  = parseInt(document.getElementById(`rop_${i}`)?.value||0)||0;
-    data[mk][`area_${i}`] = {spend, leads, opps};
-  });
-  // Save notes and extras
-  data[mk].notes = document.getElementById('rep-notes')?.value||'';
-  data[mk].svc_hits = parseInt(document.getElementById('rep-svc-hits')?.value||0)||0;
-  data[mk].conversions = parseInt(document.getElementById('rep-conversions')?.value||0)||0;
-  localStorage.setItem(RK, JSON.stringify(data));
-  const t=document.createElement('div');t.className='toast';t.textContent='✓ Month data saved';document.body.appendChild(t);setTimeout(()=>t.remove(),2500);
-  renderYearTable();
+
+/* Lee P&L para un mes — usa pnlComputeMonth si está disponible (carga tras budget.js) */
+function repGetPNL(m) {
+  try {
+    if (typeof pnlComputeMonth === 'function' && typeof pnlLoad === 'function') {
+      return pnlComputeMonth(m, pnlLoad());
+    }
+  } catch(_) {}
+  return null;
 }
 
-function renderReport(){
+/* Guarda notas (único campo manual) */
+function repSaveNotes() {
   const data = getReportData();
   const mk = `m${ACTIVE_MONTH}`;
-  const md = data[mk]||{};
-  const budget = JSON.parse(localStorage.getItem(BK)||'{}');
+  if (!data[mk]) data[mk] = {};
+  data[mk].notes = document.getElementById('rep-notes')?.value || '';
+  localStorage.setItem(RK, JSON.stringify(data));
+}
 
-  // Pipeline table
-  const tbody = document.getElementById('rep-pipeline-body');
-  if(tbody){
-    tbody.innerHTML = AREAS.map((area,i)=>{
-      const saved = md[`area_${i}`]||{};
-      const spend = saved.spend||0;
-      const leads = saved.leads||0;
-      const opps  = saved.opps||0;
-      const cpl   = leads>0?(spend/leads).toFixed(0):'—';
-      const pipeVal = opps>0?(opps*5000).toLocaleString():'—';
-      const isTotal = area==='Overall';
-      return `<tr style="${isTotal?'background:var(--gp);font-weight:500':''}">
-        <td><span class="tm">${area}</span></td>
-        <td><input type="number" id="rsp_${i}" value="${spend||''}" placeholder="0" style="width:90px;padding:5px 8px;border:1px solid var(--bd2);border-radius:6px;background:var(--sf2);color:var(--tx);font-size:12px;font-family:'DM Mono',monospace;text-align:right" ${isTotal?'readonly style="width:90px;padding:5px 8px;border:1px solid var(--bd2);border-radius:6px;background:var(--sf2);color:var(--tx);font-size:12px;font-family:DM Mono,monospace;text-align:right;opacity:.7"':''}/></td>
-        <td><input type="number" id="rld_${i}" value="${leads||''}" placeholder="0" style="width:70px;padding:5px 8px;border:1px solid var(--bd2);border-radius:6px;background:var(--sf2);color:var(--tx);font-size:12px;font-family:'DM Mono',monospace;text-align:right"/></td>
-        <td><input type="number" id="rop_${i}" value="${opps||''}" placeholder="0" style="width:70px;padding:5px 8px;border:1px solid var(--bd2);border-radius:6px;background:var(--sf2);color:var(--tx);font-size:12px;font-family:'DM Mono',monospace;text-align:right"/></td>
-        <td style="text-align:right;font-size:12px;color:var(--mt)">${cpl}</td>
-        <td style="text-align:right;font-size:12px;color:var(--green);font-weight:500">${pipeVal!=='—'?'£'+pipeVal:'—'}</td>
-      </tr>`;
-    }).join('');
+/* ── Render principal ── */
+function renderReport(){
+  const data     = getReportData();
+  const md       = data[`m${ACTIVE_MONTH}`] || {};
+  const pnl      = repGetPNL(ACTIVE_MONTH);
+  const mName    = MONTHS_SHORT[ACTIVE_MONTH];
+
+  /* Título con mes activo */
+  const titleEl = document.getElementById('rep-month-title');
+  if (titleEl) titleEl.textContent = `Monthly Report — ${mName} ${new Date().getFullYear()}`;
+
+  /* KPI Scorecard — desde P&L */
+  const kpisEl = document.getElementById('rep-kpis');
+  if (kpisEl) {
+    if (pnl && pnl.gross_revenue > 0) {
+      kpisEl.innerHTML = [
+        { l:'Revenue',      v:'£'+pnl.gross_revenue.toLocaleString(),                       sub:'Ingresos brutos',   color:'var(--green)' },
+        { l:'EBITDA',       v:'£'+Math.round(pnl.ebitda).toLocaleString(),                  sub:pnl.net_margin.toFixed(0)+'% margen', color:pnl.ebitda>=0?'var(--green)':'var(--red)' },
+        { l:'Clientes',     v:pnl.total_clients.toString(),                                  sub:'Coaching',          color:'var(--blue)' },
+        { l:'Scanner packs',v:pnl.scanner_units>0?pnl.scanner_units.toString():'—',         sub:'Vendidos',          color:'var(--teal)' },
+        { l:'OpEx real',    v:'£'+Math.round(pnl.opex_actual).toLocaleString(),              sub:'Gasto total',       color:'var(--amber)' },
+        { l:'Margen bruto', v:pnl.gross_margin.toFixed(0)+'%',                              sub:'Gross margin',      color:'var(--teal)' },
+        { l:'CAC',          v:pnl.cac?'£'+pnl.cac:'—',                                     sub:'Coste/cliente',     color:'var(--purple)' },
+        { l:'LTV/CAC',      v:pnl.ltv_cac_ratio?pnl.ltv_cac_ratio+'x':'—',                 sub:'Objetivo >3x',      color:parseFloat(pnl.ltv_cac_ratio)>=3?'var(--green)':'var(--amber)' },
+      ].map(k=>`<div class="kpi"><div class="kl">${k.l}</div><div class="kv" style="color:${k.color}">${k.v}</div><div class="ks">${k.sub}</div></div>`).join('');
+    } else {
+      kpisEl.innerHTML = `<div style="padding:16px;font-size:12px;color:var(--ht);text-align:center;width:100%">
+        Sin datos de P&L para ${mName}. Entra en <strong>P&L · Revenue</strong> e introduce las ventas del mes.
+      </div>`;
+    }
   }
 
-  // Channel cards - get budget for this month
-  const chSpend = {
-    'Paid Media': parseFloat(budget[`paid_media_${ACTIVE_MONTH}`]||0),
-    'LinkedIn Ads': parseFloat(budget[`li_ads_${ACTIVE_MONTH}`]||0),
-    'Design': parseFloat(budget[`design_${ACTIVE_MONTH}`]||0),
-    'Email': parseFloat(budget[`email_${ACTIVE_MONTH}`]||0),
-    'Events & PR': parseFloat(budget[`events_${ACTIVE_MONTH}`]||0),
-    'Tools': parseFloat(budget[`tools_${ACTIVE_MONTH}`]||0),
-  };
-  const totalSpend = Object.values(chSpend).reduce((a,b)=>a+b,0);
-  const chColors = {'Paid Media':'#FEF2F2','LinkedIn Ads':'#EFF6FF','Design':'#F5F3FF','Email':'#FFFBEB','Events & PR':'#FEF2F2','Tools':'#ECFEFF'};
-  const chIcons = {'Paid Media':'📢','LinkedIn Ads':'💼','Design':'🎨','Email':'⚡','Events & PR':'🎪','Tools':'🛠️'};
-  const repCards = document.getElementById('rep-channel-cards');
-  if(repCards){
-    repCards.innerHTML = Object.entries(chSpend).map(([ch,spend])=>`
-      <div class="kpi" style="border-left:3px solid var(--green)">
-        <div class="kl">${chIcons[ch]} ${ch}</div>
-        <div class="kv" style="font-size:20px">${spend>0?fmtGBP(spend):'—'}</div>
-        <div class="ks">${spend>0&&totalSpend>0?((spend/totalSpend)*100).toFixed(0)+'% of total':''} · Target budget</div>
-      </div>`).join('');
-  }
-
-  // Notes & extras
+  /* Notas */
   const notesEl = document.getElementById('rep-notes');
-  if(notesEl) notesEl.value = md.notes||'';
-  const svcEl = document.getElementById('rep-svc-hits');
-  if(svcEl) svcEl.value = md.svc_hits||'';
-  const convEl = document.getElementById('rep-conversions');
-  if(convEl) convEl.value = md.conversions||'';
+  if (notesEl) notesEl.value = md.notes || '';
 
-  // MoM charts
-  renderMoMCharts(data, budget);
+  /* Gráfico Revenue vs OpEx MoM */
+  repRenderMoMChart();
+
+  /* Tabla anual */
   renderYearTable();
 
-  // Sessions by source from GA4 (if available)
+  /* GA4 Sessions */
   renderRepSessions();
 }
 
-function renderMoMCharts(data, budget){
-  // Spend MoM
-  const spendByMonth = MONTHS_SHORT.map((_,i)=>{
-    const mk=`m${i}`;const md=data[mk]||{};
-    // sum all areas spend OR use budget
-    const budgetTotal = ['paid_media','li_ads','design','email','events','tools','other'].reduce((a,ch)=>a+parseFloat(budget[`${ch}_${i}`]||0),0);
-    const manualTotal = AREAS.slice(0,4).reduce((a,_,j)=>a+(md[`area_${j}`]?.spend||0),0);
-    return manualTotal>0?manualTotal:budgetTotal;
+/* ── Gráfico Revenue vs OpEx vs EBITDA ── */
+function repRenderMoMChart() {
+  const revenues = MONTHS_SHORT.map((_,i)=>{ const p=repGetPNL(i); return p?Math.round(p.gross_revenue):0; });
+  const opexes   = MONTHS_SHORT.map((_,i)=>{ const p=repGetPNL(i); return p?Math.round(p.opex_actual):0; });
+  const ebitdas  = MONTHS_SHORT.map((_,i)=>{ const p=repGetPNL(i); return p?Math.round(p.ebitda):0; });
+
+  mkC('rep-revenue-chart','bar',{
+    labels: MONTHS_SHORT,
+    datasets:[
+      { label:'Revenue',  data:revenues, backgroundColor:MONTHS_SHORT.map((_,i)=>i===ACTIVE_MONTH?'rgba(29,158,117,.8)':'rgba(29,158,117,.2)'), borderRadius:4 },
+      { label:'OpEx',     data:opexes.map(v=>-v), backgroundColor:MONTHS_SHORT.map((_,i)=>i===ACTIVE_MONTH?'rgba(220,38,38,.55)':'rgba(220,38,38,.12)'), borderRadius:4 },
+      { type:'line', label:'EBITDA', data:ebitdas, borderColor:'#7C3AED', backgroundColor:'transparent', tension:.4, borderWidth:2, pointRadius:3 },
+    ]
+  },{
+    scales:{
+      x:{ ticks:{color:TC,font:{size:10}}, grid:{color:GC} },
+      y:{ ticks:{color:TC,font:{size:10},callback:v=>'£'+Math.abs(v/1000).toFixed(0)+'k'}, grid:{color:GC} }
+    },
+    plugins:{ legend:{display:true,position:'bottom',labels:{font:{size:10},boxWidth:10,padding:8}} }
   });
-
-  const leadsMonth = MONTHS_SHORT.map((_,i)=>{const md=data[`m${i}`]||{};return AREAS.slice(0,4).reduce((a,_,j)=>a+(md[`area_${j}`]?.leads||0),0);});
-  const oppsMonth  = MONTHS_SHORT.map((_,i)=>{const md=data[`m${i}`]||{};return AREAS.slice(0,4).reduce((a,_,j)=>a+(md[`area_${j}`]?.opps||0),0);});
-
-  mkC('rep-spend-chart','bar',{labels:MONTHS_SHORT,datasets:[{label:'Spend £',data:spendByMonth,backgroundColor:MONTHS_SHORT.map((_,i)=>i===ACTIVE_MONTH?'rgba(29,158,117,.8)':'rgba(29,158,117,.2)'),borderColor:MONTHS_SHORT.map((_,i)=>i===ACTIVE_MONTH?'#1D9E75':'rgba(29,158,117,.4)'),borderWidth:1.5,borderRadius:4}]},{scales:{x:{ticks:{color:TC,font:{size:10}},grid:{color:GC}},y:{ticks:{color:TC,font:{size:10},callback:v=>fmtGBP(v)},grid:{color:GC},beginAtZero:true}}});
-
-  mkC('rep-leads-chart','bar',{labels:MONTHS_SHORT,datasets:[
-    {label:'Leads',data:leadsMonth,backgroundColor:MONTHS_SHORT.map((_,i)=>i===ACTIVE_MONTH?'rgba(37,99,235,.8)':'rgba(37,99,235,.2)'),borderRadius:4,stack:'a'},
-    {label:'Opps',data:oppsMonth,backgroundColor:MONTHS_SHORT.map((_,i)=>i===ACTIVE_MONTH?'rgba(124,58,237,.8)':'rgba(124,58,237,.2)'),borderRadius:4,stack:'b'},
-  ]},{scales:{x:{ticks:{color:TC,font:{size:10}},grid:{color:GC}},y:{ticks:{color:TC,font:{size:10}},grid:{color:GC},beginAtZero:true}},plugins:{legend:{display:true,position:'bottom',labels:{font:{size:10},boxWidth:10,padding:8}}}});
 }
 
-async function renderRepSessions(){
-  const srcEl = document.getElementById('rep-sessions-src');
-  if(!srcEl) return;
-  if(!TOKEN){srcEl.innerHTML='<div class="notice" style="padding:10px"><strong>GA4 not connected</strong></div>';return;}
-  srcEl.innerHTML='<div class="ld"><div class="sp2"></div>Loading GA4…</div>';
-  try{
-    // Get sessions for selected month
-    const year = 2026;
-    const monthStart = new Date(year, ACTIVE_MONTH, 1);
-    const monthEnd = new Date(year, ACTIVE_MONTH+1, 0);
-    const sd = fD(monthStart); const ed = fD(monthEnd);
-    const data = await gF(`https://analyticsdata.googleapis.com/v1beta/${CFG.ga4}:runReport`,{
-      dateRanges:[{startDate:sd,endDate:ed}],
-      dimensions:[{name:'sessionDefaultChannelGroup'}],
-      metrics:[{name:'sessions'},{name:'totalUsers'},{name:'screenPageViews'}],
-      limit:10,orderBys:[{metric:{metricName:'sessions'},desc:true}]
-    });
-    const rows = data.rows||[];
-    const total = rows.reduce((a,r)=>a+parseInt(r.metricValues[0].value),0);
-    const totalPV = rows.reduce((a,r)=>a+parseInt(r.metricValues[2].value),0);
-    const totalUsers = rows.reduce((a,r)=>a+parseInt(r.metricValues[1].value),0);
-
-    // Update session chart
-    mkC('rep-sessions-chart','bar',{labels:rows.map(r=>r.dimensionValues[0].value),datasets:[{label:'Sessions',data:rows.map(r=>parseInt(r.metricValues[0].value)),backgroundColor:COLORS.map(c=>c+'33'),borderColor:COLORS,borderWidth:1.5,borderRadius:4}]},{scales:{x:{ticks:{color:TC,font:{size:10}},grid:{color:GC}},y:{ticks:{color:TC,font:{size:10}},grid:{color:GC},beginAtZero:true}}});
-
-    srcEl.innerHTML=`<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:12px">
-      <div class="sb2"><div class="sv">${total.toLocaleString()}</div><div class="slb">Sessions</div></div>
-      <div class="sb2"><div class="sv">${totalUsers.toLocaleString()}</div><div class="slb">Users</div></div>
-      <div class="sb2"><div class="sv">${totalPV.toLocaleString()}</div><div class="slb">Pageviews</div></div>
-    </div>
-    <table class="dt"><thead><tr><th>Source</th><th>Sessions</th><th>%</th></tr></thead><tbody>${
-      rows.map(r=>{const s=parseInt(r.metricValues[0].value);const pct=total>0?((s/total)*100).toFixed(0):0;return`<tr><td><span class="tm">${r.dimensionValues[0].value}</span><div class="mb"><div class="mf" style="width:${pct}%;background:#1D9E75"></div></div></td><td>${s.toLocaleString()}</td><td>${pct}%</td></tr>`;}).join('')
-    }</tbody></table>`;
-
-    // Also update email chart if Instantly connected
-    renderRepEmail();
-  }catch(e){srcEl.innerHTML=`<div class="notice" style="padding:10px"><strong>GA4 error</strong>${e.message}</div>`;}
-}
-
-async function renderRepEmail(){
-  const emailEl = document.getElementById('rep-email-chart');
-  if(!emailEl||!CFG.instantly) return;
-  try{
-    const hdrs2={'Authorization':'Bearer '+CFG.instantly,'Content-Type':'application/json'};
-    let r2;
-    try{ r2=await fetch('https://api.instantly.ai/api/v2/campaigns?limit=50',{headers:hdrs2}); }catch(e){ r2=null; }
-    if(!r2||!r2.ok){ try{ r2=await fetch(`https://corsproxy.io/?${encodeURIComponent('https://api.instantly.ai/api/v2/campaigns?limit=50')}`,{headers:hdrs2}); }catch(e){ r2=null; } }
-    if(!r2||!r2.ok) return;
-    const d2=await r2.json();
-    const camps=Array.isArray(d2)?d2:(d2.items||d2.campaigns||d2.data||[]);
-    const sent=camps.reduce((a,c)=>a+(c.campaign_stats?.emails_sent_count||0),0);
-    const opens=camps.reduce((a,c)=>a+(c.campaign_stats?.unique_opens_count||0),0);
-    const replies=camps.reduce((a,c)=>a+(c.campaign_stats?.reply_count||0),0);
-    const clicks=camps.reduce((a,c)=>a+(c.campaign_stats?.link_clicks_count||0),0);
-    mkC('rep-email-chart','bar',{
-      labels:['Sent','Opens','Clicks','Replies'],
-      datasets:[{data:[sent,opens,clicks,replies],backgroundColor:['rgba(124,58,237,.15)','rgba(124,58,237,.3)','rgba(124,58,237,.5)','rgba(124,58,237,.8)'],borderColor:'#7C3AED',borderWidth:1.5,borderRadius:4}]
-    },{scales:{x:{ticks:{color:TC,font:{size:10}},grid:{color:GC}},y:{ticks:{color:TC,font:{size:10}},grid:{color:GC},beginAtZero:true}}});
-  }catch(e){}
-}
-
+/* ── Tabla año completo ── */
 function renderYearTable(){
-  const data = getReportData();
-  const budget = JSON.parse(localStorage.getItem(BK)||'{}');
   const headEl = document.getElementById('rep-year-head');
   const bodyEl = document.getElementById('rep-year-body');
-  if(!headEl||!bodyEl) return;
+  if (!headEl||!bodyEl) return;
 
   headEl.innerHTML=`<tr>
-    <th style="min-width:140px">Metric</th>
+    <th style="min-width:160px">Métrica</th>
     ${MONTHS_SHORT.map((m,i)=>`<th style="${i===ACTIVE_MONTH?'background:var(--gp);color:var(--green)':''}">${m}</th>`).join('')}
     <th>Total / Avg</th>
   </tr>`;
 
-  const rows2 = [
-    {label:'💰 Total spend (£)', vals: MONTHS_SHORT.map((_,i)=>{
-      const mk=`m${i}`;const md=data[mk]||{};
-      const manual=AREAS.slice(0,4).reduce((a,_,j)=>a+(md[`area_${j}`]?.spend||0),0);
-      const bdg=['paid_media','li_ads','design','email','events','tools','other'].reduce((a,ch)=>a+parseFloat(budget[`${ch}_${i}`]||0),0);
-      return manual>0?manual:bdg;
-    }), fmt:v=>v>0?fmtGBP(v):'—', sum:true},
-    {label:'👥 Leads', vals:MONTHS_SHORT.map((_,i)=>{const md=data[`m${i}`]||{};return AREAS.slice(0,4).reduce((a,_,j)=>a+(md[`area_${j}`]?.leads||0),0);}), fmt:v=>v>0?v:'—', sum:true},
-    {label:'🎯 Opportunities', vals:MONTHS_SHORT.map((_,i)=>{const md=data[`m${i}`]||{};return AREAS.slice(0,4).reduce((a,_,j)=>a+(md[`area_${j}`]?.opps||0),0);}), fmt:v=>v>0?v:'—', sum:true},
-    {label:'💷 Cost per lead', vals:MONTHS_SHORT.map((_,i)=>{
-      const md=data[`m${i}`]||{};
-      const spend=AREAS.slice(0,4).reduce((a,_,j)=>a+(md[`area_${j}`]?.spend||0),0);
-      const leads=AREAS.slice(0,4).reduce((a,_,j)=>a+(md[`area_${j}`]?.leads||0),0);
-      return leads>0?Math.round(spend/leads):0;
-    }), fmt:v=>v>0?fmtGBP(v):'—', avg:true},
-    {label:'📝 Form conversions', vals:MONTHS_SHORT.map((_,i)=>data[`m${i}`]?.conversions||0), fmt:v=>v>0?v:'—', sum:true},
-    {label:'🌐 Service page hits', vals:MONTHS_SHORT.map((_,i)=>data[`m${i}`]?.svc_hits||0), fmt:v=>v>0?v:'—', sum:true},
+  const all = MONTHS_SHORT.map((_,i)=>repGetPNL(i));
+
+  const rows = [
+    { l:'💰 Revenue (£)',      vals:all.map(p=>p?Math.round(p.gross_revenue):0),           fmt:v=>v>0?'£'+v.toLocaleString():'—',         sum:true  },
+    { l:'👥 Clientes coaching',vals:all.map(p=>p?p.total_clients:0),                        fmt:v=>v>0?v.toString():'—',                   sum:true  },
+    { l:'📦 Packs scanner',    vals:all.map(p=>p?p.scanner_units:0),                        fmt:v=>v>0?v.toString():'—',                   sum:true  },
+    { l:'💸 OpEx real (£)',    vals:all.map(p=>p?Math.round(p.opex_actual):0),              fmt:v=>v>0?'£'+v.toLocaleString():'—',         sum:true  },
+    { l:'📈 EBITDA (£)',       vals:all.map(p=>p?Math.round(p.ebitda):0),                   fmt:v=>v!==0?( v>=0?'£'+v.toLocaleString():'−£'+Math.abs(v).toLocaleString() ):'—', sum:true },
+    { l:'💳 CAC (£)',          vals:all.map(p=>p&&p.cac?p.cac:0),                           fmt:v=>v>0?'£'+v:'—',                          avg:true  },
+    { l:'📊 Margen bruto',     vals:all.map(p=>p&&p.gross_revenue>0?parseFloat(p.gross_margin.toFixed(0)):0), fmt:v=>v>0?v+'%':'—', avg:true },
   ];
 
-  bodyEl.innerHTML = rows2.map(row=>{
-    const total = row.sum ? row.vals.reduce((a,b)=>a+b,0) : row.avg ? (row.vals.filter(v=>v>0).reduce((a,b)=>a+b,0)/(row.vals.filter(v=>v>0).length||1)) : 0;
+  bodyEl.innerHTML = rows.map(row=>{
+    const nonZ = row.vals.filter(v=>v!==0);
+    const total = row.sum  ? row.vals.reduce((a,b)=>a+b,0)
+                : row.avg  ? Math.round(nonZ.reduce((a,b)=>a+b,0)/(nonZ.length||1))
+                : 0;
     return `<tr>
-      <td><span class="tm">${row.label}</span></td>
+      <td><span class="tm">${row.l}</span></td>
       ${row.vals.map((v,i)=>`<td style="text-align:right;${i===ACTIVE_MONTH?'background:var(--gp);font-weight:500;color:var(--green)':''}">${row.fmt(v)}</td>`).join('')}
       <td style="text-align:right;font-weight:500;color:var(--tx)">${row.fmt(total)}</td>
     </tr>`;
   }).join('');
 }
 
+/* ── Resumen ejecutivo IA ── */
+async function repAISummary() {
+  if (!CFG.ak) { alert('Añade tu Anthropic API key en Settings'); return; }
+  const btn = document.getElementById('rep-ai-btn');
+  if (btn) { btn.disabled=true; btn.textContent='⟳ Generando…'; }
+
+  const pnl    = repGetPNL(ACTIVE_MONTH);
+  const mName  = MONTHS_SHORT[ACTIVE_MONTH];
+  const pnlPrev = ACTIVE_MONTH > 0 ? repGetPNL(ACTIVE_MONTH-1) : null;
+  const notes  = document.getElementById('rep-notes')?.value || '';
+
+  const pnlTxt = pnl && pnl.gross_revenue > 0
+    ? `Revenue: £${Math.round(pnl.gross_revenue).toLocaleString()} | Clientes coaching: ${pnl.total_clients} | Packs scanner: ${pnl.scanner_units}
+EBITDA: £${Math.round(pnl.ebitda).toLocaleString()} (${pnl.net_margin.toFixed(0)}% margen) | OpEx: £${Math.round(pnl.opex_actual).toLocaleString()}
+CAC: ${pnl.cac?'£'+pnl.cac:'N/A'} | LTV/CAC: ${pnl.ltv_cac_ratio||'N/A'} | Margen bruto: ${pnl.gross_margin.toFixed(0)}%`
+    : 'Sin datos de P&L para este mes.';
+
+  const prevTxt = pnlPrev && pnlPrev.gross_revenue > 0
+    ? `Mes anterior (${MONTHS_SHORT[ACTIVE_MONTH-1]}): Revenue £${Math.round(pnlPrev.gross_revenue).toLocaleString()}, ${pnlPrev.total_clients} clientes, EBITDA £${Math.round(pnlPrev.ebitda).toLocaleString()}`
+    : '';
+
+  const prompt = `Eres el CFO-CMO de Próximo Rol (coaching de entrevistas para profesionales hispanohablantes, ticket €97-1690).
+
+DATOS ${mName.toUpperCase()} 2026:
+${pnlTxt}
+${prevTxt ? 'COMPARATIVA: '+prevTxt : ''}
+Notas del mes: ${notes||'(ninguna)'}
+
+Genera un resumen ejecutivo del mes en 3 párrafos breves (máximo 180 palabras total):
+1. Resultado financiero del mes: revenue, margen, comparativa vs mes anterior si hay datos
+2. Señal más importante (positiva o negativa) y su causa probable
+3. Una prioridad concreta para el mes siguiente
+
+En español. Sin introducción. Sin bullet points. Directo.`;
+
+  try {
+    const resp = await antFetch({ model:'claude-sonnet-4-20250514', max_tokens:500, messages:[{role:'user',content:prompt}] });
+    const text = (resp.content||[]).filter(b=>b.type==='text').map(b=>b.text).join('').trim();
+    const box = document.getElementById('rep-ai-box');
+    if (box) {
+      box.style.display='block';
+      box.innerHTML=`
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
+          <div style="display:flex;align-items:center;gap:7px">
+            <span style="color:var(--purple)">✦</span>
+            <span style="font-size:11px;font-weight:600;color:var(--purple);text-transform:uppercase;letter-spacing:.05em">Resumen ejecutivo — ${mName}</span>
+          </div>
+          <button onclick="navigator.clipboard.writeText(document.getElementById('rep-ai-text').textContent).then(()=>{this.textContent='✓ Copiado';setTimeout(()=>this.textContent='📋 Copiar',2000)})"
+            style="padding:4px 10px;border:1px solid var(--bd2);border-radius:var(--r);font-size:11px;cursor:pointer;background:var(--sf2);color:var(--mt);font-family:inherit">📋 Copiar</button>
+        </div>
+        <div id="rep-ai-text" style="font-size:12px;color:var(--tx);line-height:1.7">${text.replace(/\n/g,'<br>')}</div>`;
+    }
+  } catch(err) {
+    const box=document.getElementById('rep-ai-box');
+    if(box){box.style.display='block';box.textContent='Error: '+err.message;}
+  } finally {
+    if(btn){btn.disabled=false;btn.innerHTML='✦ Generar resumen IA';}
+  }
+}
+
+async function renderRepSessions(){
+  const srcEl = document.getElementById('rep-sessions-src');
+  if(!srcEl) return;
+  if(!TOKEN){srcEl.innerHTML='<div class="notice" style="padding:10px"><strong>GA4 no conectado</strong></div>';return;}
+  srcEl.innerHTML='<div class="ld"><div class="sp2"></div>Cargando GA4…</div>';
+  try{
+    const year=new Date().getFullYear();
+    const sd=fD(new Date(year,ACTIVE_MONTH,1));
+    const ed=fD(new Date(year,ACTIVE_MONTH+1,0));
+    const data=await gF(`https://analyticsdata.googleapis.com/v1beta/${CFG.ga4}:runReport`,{
+      dateRanges:[{startDate:sd,endDate:ed}],
+      dimensions:[{name:'sessionDefaultChannelGroup'}],
+      metrics:[{name:'sessions'},{name:'totalUsers'},{name:'screenPageViews'}],
+      limit:10,orderBys:[{metric:{metricName:'sessions'},desc:true}]
+    });
+    const rows=data.rows||[];
+    const total=rows.reduce((a,r)=>a+parseInt(r.metricValues[0].value),0);
+    const totalUsers=rows.reduce((a,r)=>a+parseInt(r.metricValues[1].value),0);
+    const totalPV=rows.reduce((a,r)=>a+parseInt(r.metricValues[2].value),0);
+
+    mkC('rep-sessions-chart','bar',{
+      labels:rows.map(r=>r.dimensionValues[0].value),
+      datasets:[{label:'Sessions',data:rows.map(r=>parseInt(r.metricValues[0].value)),backgroundColor:COLORS.map(c=>c+'33'),borderColor:COLORS,borderWidth:1.5,borderRadius:4}]
+    },{scales:{x:{ticks:{color:TC,font:{size:10}},grid:{color:GC}},y:{ticks:{color:TC,font:{size:10}},grid:{color:GC},beginAtZero:true}}});
+
+    srcEl.innerHTML=`<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:12px">
+      <div class="sb2"><div class="sv">${total.toLocaleString()}</div><div class="slb">Sessions</div></div>
+      <div class="sb2"><div class="sv">${totalUsers.toLocaleString()}</div><div class="slb">Users</div></div>
+      <div class="sb2"><div class="sv">${totalPV.toLocaleString()}</div><div class="slb">Pageviews</div></div>
+    </div>
+    <table class="dt" style="margin-bottom:10px"><thead><tr><th>Fuente</th><th>Sessions</th><th>%</th></tr></thead><tbody>${
+      rows.map(r=>{const s=parseInt(r.metricValues[0].value);const pct=total>0?((s/total)*100).toFixed(0):0;
+        return`<tr><td><span class="tm">${r.dimensionValues[0].value}</span><div class="mb"><div class="mf" style="width:${pct}%;background:#1D9E75"></div></div></td><td>${s.toLocaleString()}</td><td>${pct}%</td></tr>`;
+      }).join('')
+    }</tbody></table>`;
+
+    renderRepEmail();
+  }catch(e){srcEl.innerHTML=`<div class="notice" style="padding:10px"><strong>GA4 error:</strong> ${e.message}</div>`;}
+}
+
+async function renderRepEmail(){
+  const emailEl=document.getElementById('rep-email-chart');
+  if(!emailEl||!CFG.instantly) return;
+  try{
+    const hdrs={'Authorization':'Bearer '+CFG.instantly,'Content-Type':'application/json'};
+    let r;
+    try{r=await fetch('https://api.instantly.ai/api/v2/campaigns?limit=50',{headers:hdrs});}catch(e){r=null;}
+    if(!r||!r.ok){try{r=await fetch(`https://corsproxy.io/?${encodeURIComponent('https://api.instantly.ai/api/v2/campaigns?limit=50')}`,{headers:hdrs});}catch(e){r=null;}}
+    if(!r||!r.ok) return;
+    const d=await r.json();
+    const camps=Array.isArray(d)?d:(d.items||d.campaigns||d.data||[]);
+    const sent=camps.reduce((a,c)=>a+(c.campaign_stats?.emails_sent_count||0),0);
+    const opens=camps.reduce((a,c)=>a+(c.campaign_stats?.unique_opens_count||0),0);
+    const replies=camps.reduce((a,c)=>a+(c.campaign_stats?.reply_count||0),0);
+    const clicks=camps.reduce((a,c)=>a+(c.campaign_stats?.link_clicks_count||0),0);
+    mkC('rep-email-chart','bar',{
+      labels:['Enviados','Aperturas','Clicks','Respuestas'],
+      datasets:[{data:[sent,opens,clicks,replies],backgroundColor:['rgba(124,58,237,.15)','rgba(124,58,237,.3)','rgba(124,58,237,.5)','rgba(124,58,237,.8)'],borderColor:'#7C3AED',borderWidth:1.5,borderRadius:4}]
+    },{scales:{x:{ticks:{color:TC,font:{size:10}},grid:{color:GC}},y:{ticks:{color:TC,font:{size:10}},grid:{color:GC},beginAtZero:true}}});
+  }catch(e){}
+}
 
