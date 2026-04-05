@@ -68,7 +68,7 @@ function bgt2EnsureToolbar(cfg){
   tb.style.cssText='display:flex;gap:8px;align-items:center;margin-bottom:14px;padding:10px 14px;background:var(--sf);border:1px solid var(--bd);border-radius:var(--rl);flex-wrap:wrap';
   tb.innerHTML=`
     <span style="font-size:12px;font-weight:500;color:var(--tx)">${cfg.categories.length} categorías · ${cfg.lines.length} líneas</span>
-    <span style="font-size:12px;color:var(--mt)">Anual: <strong>${(cfg.currency||'€')}${Math.round(annual).toLocaleString()}</strong></span>
+    <span style="font-size:12px;color:var(--mt)">Anual: <strong>${(cfg.currency||'£')}${Math.round(annual).toLocaleString()}</strong></span>
     <div style="margin-left:auto;display:flex;gap:6px;flex-wrap:wrap">
       <button onclick="bgt2ShowActualsModal()" class="btn-s" style="background:var(--blue)">✏️ Gastos reales</button>
       <button onclick="bgt2StartEdit()" style="padding:7px 13px;border:1px solid var(--bd2);border-radius:var(--r);font-size:12px;cursor:pointer;background:var(--sf2);color:var(--mt);font-family:inherit">⚙️ Editar presupuesto</button>
@@ -261,9 +261,9 @@ function bgt2S3(){
           <td style="padding:4px 2px;text-align:right;min-width:58px">
             <input type="number" min="0" step="1" value="${l.vals?.[mi]||''}" placeholder="0" class="bgt2-mi"
               oninput="BGT2_WZ.lines[${gi}].vals[${mi}]=parseFloat(this.value)||0;
-                       this.closest('tr').querySelector('.bgt2-rt').textContent='€'+BGT2_WZ.lines[${gi}].vals.reduce((a,b)=>a+(b||0),0).toLocaleString()"/>
+                       this.closest('tr').querySelector('.bgt2-rt').textContent='£'+BGT2_WZ.lines[${gi}].vals.reduce((a,b)=>a+(b||0),0).toLocaleString()"/>
           </td>`).join('')}
-        <td style="padding:6px 10px;text-align:right;font-weight:600;color:${cat.color};min-width:60px" class="bgt2-rt">€${tot.toLocaleString()}</td>
+        <td style="padding:6px 10px;text-align:right;font-weight:600;color:${cat.color};min-width:60px" class="bgt2-rt">£${tot.toLocaleString()}</td>
       </tr>`;
     });
   });
@@ -341,7 +341,7 @@ function bgt2ImportSetupFile(input){
 }
 
 function bgt2FinishWizard(){
-  const cfg={version:2,currency:'€',year:new Date().getFullYear(),
+  const cfg={version:2,currency:'£',year:new Date().getFullYear(),
     categories:BGT2_WZ.categories,lines:BGT2_WZ.lines.filter(l=>l.name.trim())};
   bgt2Save(cfg);
   ['budget-insights-wrap','budget-bar-chart','budget-ytd-bars','budget-detail-table']
@@ -431,7 +431,8 @@ function bgt2StartEdit(){
 ══════════════════════════════ */
 function bgt2ShowActualsModal(){
   const cfg=bgt2Load();if(!cfg)return;
-  let selM=new Date().getMonth();
+  /* selM expuesto en window para que los onclicks inline puedan actualizarlo */
+  window._bgt2SelM = new Date().getMonth();
   const MMAP={ene:0,feb:1,mar:2,abr:3,may:4,jun:5,jul:6,ago:7,sep:8,oct:9,nov:10,dic:11,
     jan:0,feb:1,mar:2,apr:3,may:4,jun:5,jul:6,aug:7,sep:8,oct:9,nov:10,dec:11};
 
@@ -442,8 +443,13 @@ function bgt2ShowActualsModal(){
   ov.onclick=e=>{if(e.target===ov)ov.remove();};
 
   function draw(){
+    /* Sincronizar con el valor global que pueden modificar los onclicks */
+    const selM = window._bgt2SelM;
+    /* Exponer draw globalmente para que los onclicks puedan llamarla */
+    window._bgt2Draw = draw;
+
     const actuals=bgt2LoadActuals();
-    window._bgt2a=actuals; /* exponer para handlers inline */
+    window._bgt2a=actuals;
     const rows=cfg.categories.map(cat=>{
       const lines=cfg.lines.filter(l=>l.catId===cat.id&&l.name.trim());
       if(!lines.length)return'';
@@ -455,14 +461,14 @@ function bgt2ShowActualsModal(){
         const over=actual>target&&target>0;
         return`<tr style="border-bottom:1px solid var(--bd)">
           <td style="padding:7px 12px;font-size:12px">${l.name}</td>
-          <td style="padding:7px 8px;text-align:right;font-size:11px;color:var(--ht)">${target?'€'+target.toLocaleString():'—'}</td>
+          <td style="padding:7px 8px;text-align:right;font-size:11px;color:var(--ht)">${target?'£'+target.toLocaleString():'—'}</td>
           <td style="padding:5px 12px;text-align:right">
             <div style="display:flex;align-items:center;justify-content:flex-end;gap:4px">
               <input type="number" min="0" step="0.01" value="${actual||''}" placeholder="0"
                 class="bgt2-ai" style="border:1px solid ${over?'var(--red)':'var(--bd2)'};border-radius:6px;background:var(--sf2)"
-                onchange="(function(k,v){const a=window._bgt2a;const n=parseFloat(v)||0;if(n===0)delete a[k];else a[k]=n;window.localStorage.setItem('${BGT2_ACT}',JSON.stringify(a));})(\'${cat.name}|${l.name}|\'+${selM},this.value)"
+                onchange="(function(k,v){const a=window._bgt2a;const n=parseFloat(v)||0;if(n===0)delete a[k];else a[k]=n;window.localStorage.setItem('${BGT2_ACT}',JSON.stringify(a));})('${cat.name}|${l.name}|'+window._bgt2SelM,this.value)"
                 onfocus="this.select()"/>
-              ${actual>0?`<button onclick="(function(){const a=window._bgt2a;delete a['${cat.name}|${l.name}|'+${selM}];window.localStorage.setItem('${BGT2_ACT}',JSON.stringify(a));draw();})()" title="Borrar" style="background:none;border:none;color:var(--ht);cursor:pointer;font-size:14px;padding:2px 4px;line-height:1">×</button>`:'<span style="width:20px;display:inline-block"></span>'}
+              ${actual>0?`<button onclick="(function(){const a=window._bgt2a;delete a['${cat.name}|${l.name}|'+window._bgt2SelM];window.localStorage.setItem('${BGT2_ACT}',JSON.stringify(a));window._bgt2Draw();})()" title="Borrar" style="background:none;border:none;color:var(--ht);cursor:pointer;font-size:14px;padding:2px 4px;line-height:1">×</button>`:'<span style="width:20px;display:inline-block"></span>'}
             </div>
           </td>
         </tr>`;
@@ -474,7 +480,7 @@ function bgt2ShowActualsModal(){
         <div style="display:flex;align-items:center;gap:8px;padding:13px 16px;border-bottom:1px solid var(--bd);flex-shrink:0;flex-wrap:wrap">
           <span style="font-size:14px;font-weight:600">Gastos reales</span>
           <div style="display:flex;gap:3px;flex-wrap:wrap">
-            ${BGT2_MONTHS.map((m,i)=>`<span id="bgt2-mpill-${i}" style="padding:3px 9px;border-radius:20px;font-size:11px;cursor:pointer;${i===selM?'background:var(--green);color:white':'background:var(--sf2);color:var(--mt)'}" onclick="selM=${i};draw()">${m}</span>`).join('')}
+            ${BGT2_MONTHS.map((m,i)=>`<span style="padding:3px 9px;border-radius:20px;font-size:11px;cursor:pointer;${i===selM?'background:var(--green);color:white':'background:var(--sf2);color:var(--mt)'}" onclick="window._bgt2SelM=${i};window._bgt2Draw()">${m}</span>`).join('')}
           </div>
           <button onclick="document.getElementById('bgt2-modal').remove()" style="background:none;border:none;cursor:pointer;color:var(--ht);font-size:18px;margin-left:auto;padding:4px">×</button>
         </div>
@@ -483,7 +489,7 @@ function bgt2ShowActualsModal(){
             <thead><tr style="background:var(--sf2);font-size:10px;text-transform:uppercase;letter-spacing:.04em;color:var(--ht);font-weight:600">
               <th style="padding:8px 12px;text-align:left">Línea</th>
               <th style="padding:8px 8px;text-align:right">Presupuestado</th>
-              <th style="padding:8px 12px;text-align:right">Gasto real €</th>
+              <th style="padding:8px 12px;text-align:right">Gasto real £</th>
             </tr></thead>
             <tbody>${rows}</tbody>
           </table>
@@ -491,12 +497,12 @@ function bgt2ShowActualsModal(){
         <div style="padding:12px 16px;border-top:1px solid var(--bd);display:flex;justify-content:space-between;align-items:center;flex-shrink:0;flex-wrap:wrap;gap:8px">
           <label style="display:inline-flex;align-items:center;gap:6px;padding:6px 12px;background:var(--gp);color:var(--green);border-radius:var(--r);font-size:12px;font-weight:500;cursor:pointer;border:1px solid var(--gp)">
             📥 Importar Excel
-            <input type="file" accept=".xlsx,.xls,.csv" style="display:none" onchange="bgt2ImportActualsFile(this,selM,cfg,draw)"/>
+            <input type="file" accept=".xlsx,.xls,.csv" style="display:none" onchange="bgt2ImportActualsFile(this,window._bgt2SelM,cfg,window._bgt2Draw)"/>
           </label>
           <button onclick="document.getElementById('bgt2-modal').remove();requestAnimationFrame(()=>requestAnimationFrame(()=>renderBudgetPage()))" class="btn-s">✓ Cerrar y actualizar</button>
         </div>
 
-        <!-- Gastos adicionales — entradas manuales no presupuestadas -->
+        <!-- Gastos adicionales -->
         <div style="border-top:2px solid var(--bd2);padding:14px 16px;flex-shrink:0">
           <div style="font-size:11px;font-weight:600;color:var(--ht);text-transform:uppercase;letter-spacing:.04em;margin-bottom:10px">Gastos adicionales (no presupuestados)</div>
           <div id="bgt2-libre-list">
@@ -507,17 +513,17 @@ function bgt2ShowActualsModal(){
               return libre.map(e=>`
                 <div style="display:flex;gap:8px;align-items:center;padding:5px 0;border-bottom:1px solid var(--bd)">
                   <span style="flex:1;font-size:12px;color:var(--tx)">${e.desc||'—'}</span>
-                  <span style="font-size:12px;font-weight:500;color:var(--tx)">€${(e.amount||0).toLocaleString()}</span>
-                  <button onclick="bgt2DeleteLibre('${e.id}',draw)" style="background:none;border:none;color:var(--ht);cursor:pointer;font-size:15px;padding:2px 5px">×</button>
+                  <span style="font-size:12px;font-weight:500;color:var(--tx)">£${(e.amount||0).toLocaleString()}</span>
+                  <button onclick="bgt2DeleteLibre('${e.id}',window._bgt2Draw)" style="background:none;border:none;color:var(--ht);cursor:pointer;font-size:15px;padding:2px 5px">×</button>
                 </div>`).join('');
             })()}
           </div>
           <div style="display:flex;gap:6px;margin-top:8px;flex-wrap:wrap">
             <input id="bgt2-libre-desc" type="text" placeholder="Descripción (ej: Impuesto trimestral)"
               style="flex:1;min-width:140px;padding:6px 10px;border:1px solid var(--bd2);border-radius:var(--r);font-size:12px;background:var(--sf2);color:var(--tx);font-family:inherit"/>
-            <input id="bgt2-libre-amt" type="number" min="0" step="0.01" placeholder="€ importe"
+            <input id="bgt2-libre-amt" type="number" min="0" step="0.01" placeholder="£ importe"
               style="width:100px;padding:6px 10px;border:1px solid var(--bd2);border-radius:var(--r);font-size:12px;background:var(--sf2);color:var(--tx);font-family:inherit;text-align:right"/>
-            <button onclick="bgt2AddLibre(${JSON.stringify(selM)},draw)" class="btn-s" style="white-space:nowrap">+ Añadir</button>
+            <button onclick="bgt2AddLibre(window._bgt2SelM,window._bgt2Draw)" class="btn-s" style="white-space:nowrap">+ Añadir</button>
           </div>
         </div>
       </div>`;
