@@ -550,6 +550,15 @@ function toggleCatExpand(id){
 
 
 function renderOverview(){
+  // ── Sync BGT_DATA con presupuesto Próximo Rol (budget_v2) ──
+  // Esto DEBE ir primero: si no, BGT_DATA sigue siendo la config hardcodeada de Ecoveritas.
+  // bgt2SyncGlobal sobreescribe BGT_DATA.rows, .monthlyTotals, .annualTotal y .catColors
+  // con lo que el usuario haya configurado en su wizard de Budget.
+  try {
+    const _pr_cfg = (typeof bgt2Load === 'function') ? bgt2Load() : null;
+    if (_pr_cfg && typeof bgt2SyncGlobal === 'function') bgt2SyncGlobal(_pr_cfg);
+  } catch(_){}
+
   // ── Channel summary bar ─────────────────────────────────
   const actual   = JSON.parse(localStorage.getItem(BGT_AK)||'{}');
   const cats     = Object.keys(BGT_DATA.catColors);
@@ -585,13 +594,42 @@ function renderOverview(){
   const instReplies = window._INST_AGG?.replies || 0;
   const instOpens   = window._INST_AGG?.opens   || 0;
 
+  // ── Helper: coste YTD de una línea de presupuesto ──────────
+  // Prioriza gastos reales (eco_actual_v2).
+  // Si no hay actual subido para esa línea/mes, usa el plan de BGT_DATA como fallback.
+  // Búsqueda por nombre fuzzy (incluye/incluido) para ser agnóstico a los nombres
+  // exactos que el usuario haya configurado en su budget_v2.
+  const getLineCostYTD = (keywords) => {
+    let total = 0;
+    const kws = keywords.map(k => k.toLowerCase());
+    ytdMonths.forEach(m => {
+      BGT_DATA.rows.forEach(r => {
+        const rn = r.name.toLowerCase();
+        const matches = kws.some(k => rn.includes(k) || k.includes(rn));
+        if (matches) {
+          const key = r.cat + '|' + r.name + '|' + m;
+          const actVal = parseFloat(actual[key] || 0);
+          total += actVal > 0 ? actVal : (r.vals[m] || 0);
+        }
+      });
+    });
+    return total;
+  };
+
+  // ── LinkedIn: leer de pr_li_manual_v1 (o API si está conectada) ──
+  const liMan = (typeof liGetManualData === 'function') ? liGetManualData() : {};
+  const liFollowers = liMan.totalFollowers || 0;
+  const liEng       = liMan.engThisMonth  || 0;
+
   // Channel bar cards
   const channels = [
     {name:'Web (GA4)',   color:'#1D9E75', status:'live',  val:null,               sub:'See GA4 tab'},
     {name:'Email',       color:'#7C3AED', status: instSent>0?'live':'pend',
                          val: instSent>0 ? instSent.toLocaleString()+' sent'    : '—',
                          sub: instSent>0 ? (instOpens/instSent*100).toFixed(1)+'% open rate' : 'Connect Instantly'},
-    {name:'LinkedIn',    color:'#2563EB', status:'pend',  val:'1,983',            sub:'Followers · Pending API'},
+    {name:'LinkedIn',    color:'#2563EB', status: liFollowers>0?'live':'pend',
+                         val: liFollowers>0 ? liFollowers.toLocaleString() : '—',
+                         sub: liFollowers>0 ? liEng+'% engagement' : 'Datos manuales → LinkedIn tab'},
     {name:'Paid Media',  color:'#D97706', status:'pend',  val:'—',                sub:'Google Ads pending'},
     {name:'Pipeline',    color:'#0891B2', status: totalOpps>0?'live':'pend',
                          val: totalOpps>0 ? totalOpps+' opps'                   : '—',
@@ -613,40 +651,46 @@ function renderOverview(){
     </div>`).join('');
 
   // ── Channel comparison table ────────────────────────────
+  // Costes: getLineCostYTD() → actuals primero, plan como fallback.
+  // LinkedIn reach/engagement: pr_li_manual_v1 (o API si conectada).
+  // Web (GA4): coste = paid search/sem únicamente, no toda Advertising & Campaigns.
   const tblEl = document.getElementById('ov-channel-table');
   if(tblEl){
     const rows = [
       {
         ch:'Web (GA4)', icon:'📊', color:'#1D9E75',
         reach:    document.getElementById('ga4-bg')?.textContent||'—',
-        engage:   '—', cost: '£'+Math.round(ytdMonths.reduce((s,m)=>s+BGT_DATA.rows.filter(r=>r.cat==='Advertising & Campaigns').reduce((a,r)=>a+r.vals[m],0),0)).toLocaleString(),
+        engage:   '—',
+        cost:     '£'+Math.round(getLineCostYTD(['google ads','paid search','sem','adwords'])).toLocaleString(),
         leads:    '—', roi: '—', status:'live'
       },
       {
         ch:'Email outreach', icon:'⚡', color:'#7C3AED',
         reach:   instSent>0?instSent.toLocaleString()+' sent':'—',
         engage:  instSent>0?(instOpens/instSent*100).toFixed(1)+'% open':'—',
-        cost:    '£'+Math.round(ytdMonths.reduce((s,m)=>s+BGT_DATA.rows.filter(r=>r.name==='Mailing campaigns'||r.name==='Promoting activities').reduce((a,r)=>a+r.vals[m],0),0)).toLocaleString(),
+        cost:    '£'+Math.round(getLineCostYTD(['mailing','email','instantly','outreach','newsletter'])).toLocaleString(),
         leads:   instReplies>0?instReplies+' replies':'—',
         roi:     instReplies>0&&wonAmt>0?'£'+Math.round(wonAmt/Math.max(instReplies,1)).toLocaleString()+'/reply':'—',
         status:  instSent>0?'live':'pend'
       },
       {
         ch:'LinkedIn', icon:'💼', color:'#2563EB',
-        reach:   '1,983 followers', engage: '3.2% engagement',
-        cost:    '£'+Math.round(ytdMonths.reduce((s,m)=>s+BGT_DATA.rows.filter(r=>r.name==='LinkedIn Premium').reduce((a,r)=>a+r.vals[m],0),0)).toLocaleString(),
-        leads:   '—', roi:'—', status:'pend'
+        reach:   liFollowers>0 ? liFollowers.toLocaleString()+' followers' : '—',
+        engage:  liEng>0 ? liEng+'% engagement' : '—',
+        cost:    '£'+Math.round(getLineCostYTD(['linkedin'])).toLocaleString(),
+        leads:   '—', roi:'—',
+        status:  liFollowers>0?'live':'pend'
       },
       {
         ch:'PR Agency', icon:'📣', color:'#D97706',
         reach:   '—', engage:'—',
-        cost:    '£'+Math.round(ytdMonths.reduce((s,m)=>s+BGT_DATA.rows.filter(r=>r.name==='PR Agency').reduce((a,r)=>a+r.vals[m],0),0)).toLocaleString(),
+        cost:    '£'+Math.round(getLineCostYTD(['pr agency','pr ','inked','agency','relaciones'])).toLocaleString(),
         leads:   '—', roi:'—', status:'live'
       },
       {
         ch:'Paid Media', icon:'🎯', color:'#DC2626',
         reach:   '—', engage:'—',
-        cost:    '£'+Math.round(ytdMonths.reduce((s,m)=>s+BGT_DATA.rows.filter(r=>r.name==='Google Ads').reduce((a,r)=>a+r.vals[m],0),0)).toLocaleString(),
+        cost:    '£'+Math.round(getLineCostYTD(['paid media','meta ads','facebook ads','instagram ads','social ads'])).toLocaleString(),
         leads:   '—', roi:'—', status:'pend'
       },
     ];
