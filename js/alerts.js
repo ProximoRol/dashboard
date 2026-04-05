@@ -315,6 +315,15 @@ Sé directo. Sin introducción. Sin bullet points — usa párrafos cortos. En e
     });
     const text = (data.content || []).filter(b => b.type === 'text').map(b => b.text).join('').trim();
     if (text) amRenderAISummary(text);
+
+    /* ── Guardar diagnóstico de alertas en memoria ── */
+    if (text && typeof memAddInsight === 'function') {
+      const summary = text.replace(/\n+/g, ' ').trim().slice(0, 160);
+      const mem2 = typeof memLoad === 'function' ? memLoad() : { insights: [] };
+      if (typeof memIsDuplicate !== 'function' || !memIsDuplicate(summary, mem2.insights)) {
+        memAddInsight(summary, 'alert', true, 4, 'high');
+      }
+    }
   } catch (err) {
     console.warn('Alert AI analysis failed:', err.message);
   } finally {

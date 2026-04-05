@@ -370,10 +370,29 @@ function memBuildSummary(topicHint = null) {
   const highQualityInsights = mem.insights
     .filter(i => (i.confidence || 3) >= 3 && i.actionable)
     .filter(i => !topicHint || i.category === topicHint || i.revenueImpact === 'high')
+    .filter(i => !['weekly_review','monthly_review','alert'].includes(i.category))
     .slice(0, 5);
 
   if (highQualityInsights.length) {
     lines.push(`Aprendizajes validados: ${highQualityInsights.map(i => i.text).join(' | ')}`);
+  }
+
+  /* Última revisión semanal — contexto reciente de estrategia */
+  const lastWeeklyReview = mem.insights.find(i => i.category === 'weekly_review');
+  if (lastWeeklyReview) {
+    lines.push(`Última revisión semanal (${lastWeeklyReview.date}): ${lastWeeklyReview.text}`);
+  }
+
+  /* Último diagnóstico mensual */
+  const lastMonthlyReview = mem.insights.find(i => i.category === 'monthly_review');
+  if (lastMonthlyReview) {
+    lines.push(`Último diagnóstico mensual (${lastMonthlyReview.date}): ${lastMonthlyReview.text}`);
+  }
+
+  /* Último diagnóstico de alertas */
+  const lastAlert = mem.insights.find(i => i.category === 'alert');
+  if (lastAlert) {
+    lines.push(`Último diagnóstico de alertas (${lastAlert.date}): ${lastAlert.text}`);
   }
 
   /* Historial de objetivos */

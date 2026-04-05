@@ -122,6 +122,16 @@ Sé directo. Sin introducciones. En español.`;
       );
     }
 
+    /* ── Guardar resumen con categoría identificable para el Co-Pilot ── */
+    if (typeof memAddInsight === 'function') {
+      const weekLabel = new Date().toLocaleDateString('es-ES', { day: 'numeric', month: 'short' });
+      const shortSummary = text.replace(/##[^\n]*/g, '').replace(/\n+/g, ' ').trim().slice(0, 160);
+      const mem2 = typeof memLoad === 'function' ? memLoad() : { insights: [] };
+      if (typeof memIsDuplicate !== 'function' || !memIsDuplicate(shortSummary, mem2.insights)) {
+        memAddInsight(`[Semana ${weekLabel}] ${shortSummary}`, 'weekly_review', true, 5, 'high');
+      }
+    }
+
     /* ── Renderizar resultado ── */
     if (resultEl) {
       resultEl.style.display = 'block';
@@ -235,6 +245,16 @@ En español. Sin introducciones. Máximo 500 palabras.`;
 
     if (typeof memAutoExtract === 'function') {
       await memAutoExtract('REVISIÓN MENSUAL ESTRATÉGICA', text.slice(0, 800));
+    }
+
+    /* ── Guardar diagnóstico mensual con categoría identificable ── */
+    if (typeof memAddInsight === 'function') {
+      const monthLabel = new Date().toLocaleDateString('es-ES', { month: 'long', year: 'numeric' });
+      const shortSummary = text.replace(/##[^\n]*/g, '').replace(/\n+/g, ' ').trim().slice(0, 160);
+      const mem2 = typeof memLoad === 'function' ? memLoad() : { insights: [] };
+      if (typeof memIsDuplicate !== 'function' || !memIsDuplicate(shortSummary, mem2.insights)) {
+        memAddInsight(`[Mes ${monthLabel}] ${shortSummary}`, 'monthly_review', true, 5, 'high');
+      }
     }
 
     if (resultEl) {
@@ -378,10 +398,27 @@ function rvExportMonthly() {
 
 (function rvInit() {
   function injectReviewPage() {
-    /* Nav and page-review are already in index.html — just populate the content */
-    const page = document.getElementById('page-review');
-    if (!page) return;
+    /* 1. Nav item en sección Planning */
+    const nav = document.querySelector('.sb-nav');
+    if (nav) {
+      const planningItems = Array.from(nav.querySelectorAll('.ni'))
+        .find(el => el.textContent.includes('P&L') || el.textContent.includes('Budget'));
+      if (planningItems) {
+        const rvNav = document.createElement('div');
+        rvNav.className = 'ni';
+        rvNav.setAttribute('onclick', "showP('review', this)");
+        rvNav.innerHTML = `<div class="nico">📅</div>Revisión periódica<span class="nb" style="background:#F5F3FF;color:#7C3AED">Weekly</span>`;
+        planningItems.insertAdjacentElement('afterend', rvNav);
+      }
+    }
 
+    /* 2. Página */
+    const main = document.querySelector('.main');
+    if (!main) return;
+
+    const page = document.createElement('div');
+    page.className = 'page';
+    page.id = 'page-review';
     page.innerHTML = `
       <div class="sh">
         <span class="sl">Revisión periódica</span>
@@ -425,9 +462,12 @@ function rvExportMonthly() {
         <div id="rv-history" style="padding:4px 0"></div>
       </div>`;
 
+    const lastPage = main.querySelector('.page:last-of-type');
+    if (lastPage) lastPage.insertAdjacentElement('afterend', page);
+    else main.appendChild(page);
+
     if (typeof TITLES !== 'undefined') TITLES['review'] = 'Revisión periódica';
 
-    /* Hook showP to trigger history render */
     const origShowP = window.showP;
     window.showP = function(id, el) {
       origShowP.apply(this, arguments);
@@ -443,5 +483,3 @@ function rvExportMonthly() {
     setTimeout(injectReviewPage, 300);
   }
 })();
-
-
