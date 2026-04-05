@@ -85,42 +85,84 @@ async function libSyncSite(silent){
   if(btn){btn.disabled=true;btn.textContent='⟳ Sincronizando…';}
   try{
     /* Intento 1: CORS proxy para leer el sitio real */
-    const homeText = await libFetchHtml('https://www.proximorol.com/')
-                  || await libFetchHtml('https://proximorol.com/');
-    const sitemapText = await libFetchHtml('https://www.proximorol.com/sitemap.xml').catch(()=>null) || '';
+    const homeRaw = await libFetchHtml('https://www.proximorol.com/')
+                 || await libFetchHtml('https://proximorol.com/');
+    const sitemapRaw = await libFetchHtml('https://www.proximorol.com/sitemap.xml').catch(()=>null) || '';
 
-    /* Construir prompt: con datos reales si los hay, con conocimiento del modelo si no */
+    /* Sanitizar el texto para que no rompa el JSON — eliminar comillas y caracteres problemáticos */
+    const sanitize = t => t
+      .replace(/["""''«»]/g, ' ')  /* comillas tipográficas y normales */
+      .replace(/[\\]/g, ' ')        /* backslashes */
+      .replace(/[\r\n\t]+/g, ' ')  /* saltos de línea y tabs */
+      .replace(/\s{2,}/g, ' ')
+      .trim();
+
+    const homeText  = homeRaw  ? sanitize(homeRaw).slice(0, 3000) : null;
+    const sitemapText = sitemapRaw ? sanitize(sitemapRaw).slice(0, 800) : '';
+
     const prompt = homeText
-      ? `Analiza el contenido real de proximorol.com y extrae información estructurada.
+      ? `Analiza el contenido del sitio proximorol.com y extrae info estructurada.
+HOMEPAGE: ${homeText}
+${sitemapText ? 'SITEMAP: ' + sitemapText : ''}
+Extrae páginas con URLs y títulos, si hay blog, servicios, keywords presentes y keywords ausentes para coaching de entrevistas.`
+      : `Basándote en tu conocimiento sobre proximorol.com (coaching entrevistas España/LATAM), describe sus páginas, servicios y keywords presentes vs ausentes.`;
 
-HOMEPAGE (contenido real):
-${homeText.slice(0,3500)}
-${sitemapText ? '\nSITEMAP:\n' + sitemapText.slice(0,1000) : ''}
+    const fullPrompt = prompt + `
 
-Extrae páginas, blog, servicios, keywords presentes y keywords ausentes importantes para el nicho.`
-
-      : `Basándote en tu conocimiento de entrenamiento sobre proximorol.com:
-Es un servicio de coaching de entrevistas para profesionales hispanohablantes.
-Describe las páginas que probablemente tiene, servicios, y keywords que usa vs las que debería usar.
-Sé específico basándote en lo que sabes del negocio.`;
-
-    const fullPrompt = prompt + `\n\nDevuelve SOLO JSON válido sin markdown:\n{"pages":[{"url":"","title":"","description":"","keywords":[]}],"blog":{"exists":true,"posts":[{"url":"","title":"","summary":""}]},"services":[],"mainKeywords":[],"missingKeywords":[],"summary":"descripción en 2-3 frases","source":"${homeText?'live':'knowledge'}"}`;
+IMPORTANTE: Devuelve SOLO un objeto JSON válido. Usa únicamente comillas dobles. No uses comillas dentro de los valores de texto — usa espacios en su lugar. Sin markdown, sin backticks, sin texto fuera del JSON.
+{"pages":[{"url":"URL","title":"TITULO","description":"DESC","keywords":["kw1","kw2"]}],"blog":{"exists":false,"posts":[]},"services":["servicio1","servicio2"],"mainKeywords":["kw1","kw2"],"missingKeywords":["kw1","kw2"],"summary":"resumen del sitio","source":"${homeText?'live':'knowledge'}"}`;
 
     const data = await antFetch({
-      model:'claude-haiku-4-5-20251001', max_tokens:2000,
+      model:'claude-haiku-4-5-20251001', max_tokens:1500,
       messages:[{role:'user', content:fullPrompt}]
     });
 
     const raw=(data.content||[]).filter(b=>b.type==='text').map(b=>b.text).join('').trim();
-    const m=raw.match(/\{[\s\S]*\}/);
-    if(!m) throw new Error('Respuesta inesperada del modelo. Inténtalo de nuevo.');
-    const parsed=JSON.parse(m[0]);
+
+    /* Parseo defensivo: múltiples intentos */
+    let parsed = null;
+
+    /* Intento 1: JSON directo */
+    try { parsed = JSON.parse(raw); } catch(_) {}
+
+    /* Intento 2: Extraer primer bloque JSON */
+    if(!parsed) {
+      const m = raw.match(/\{[\s\S]*\}/);
+      if(m) {
+        try { parsed = JSON.parse(m[0]); } catch(_) {}
+      }
+    }
+
+    /* Intento 3: Limpiar y reintentar — eliminar caracteres de control */
+    if(!parsed) {
+      const cleaned = raw
+        .replace(/[\x00-\x1F\x7F]/g, ' ')  /* caracteres de control */
+        .replace(/,\s*([}\]])/g, '$1')       /* trailing commas */
+        .replace(/([{,]\s*)(\w+):/g, '$1"$2":'); /* keys sin comillas */
+      const m2 = cleaned.match(/\{[\s\S]*\}/);
+      if(m2) {
+        try { parsed = JSON.parse(m2[0]); } catch(_) {}
+      }
+    }
+
+    /* Intento 4: Fallback — guardar al menos el summary como texto */
+    if(!parsed) {
+      parsed = {
+        pages: [], blog: { exists: false, posts: [] }, services: [],
+        mainKeywords: [], missingKeywords: [],
+        summary: raw.slice(0, 300).replace(/[{}[\]"]/g, ''),
+        source: homeText ? 'live' : 'knowledge',
+        parseError: true
+      };
+    }
+
     libSaveSnapshot(parsed);
 
     if(!silent){
       const src = parsed.source==='live' ? '🌐 Datos en tiempo real' : '🧠 Conocimiento del modelo';
+      const warn = parsed.parseError ? '\n⚠ JSON parcial — algunos datos pueden estar incompletos.' : '';
       const pC=parsed.pages?.length||0, bC=parsed.blog?.posts?.length||0;
-      alert(`✅ Sitio sincronizado (${src}).\n${pC} páginas · ${bC} posts encontrados.\nEl co-pilot ya conoce proximorol.com.`);
+      alert(`✅ Sitio sincronizado (${src}).\n${pC} páginas · ${bC} posts encontrados.${warn}`);
     }
     if(document.getElementById('page-library')?.classList.contains('active')) renderLibraryPage();
 
