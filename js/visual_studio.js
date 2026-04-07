@@ -123,7 +123,7 @@ function loadVisualStudio() {
    RENDER PRINCIPAL
    ═══════════════════════════════════════════════ */
 function vsRender(el) {
-  var hasKey       = !!(typeof CFG !== 'undefined' && CFG.geminiKey);
+  var hasKey       = !!(typeof CFG !== 'undefined' && CFG.openaiKey);
   var hasAnthropic = !!(typeof CFG !== 'undefined' && CFG.ak);
 
   var warnings = '';
@@ -135,7 +135,7 @@ function vsRender(el) {
   }
   if (!hasKey) {
     warnings += '<div style="background:#FFFBEB;border:1px solid #FDE68A;border-radius:var(--r);padding:10px 14px;font-size:12px;color:#92400E;margin-bottom:12px">'
-      + '<strong>Gemini API Key no configurada</strong> — necesaria para generar imagenes.'
+      + '<strong>OpenAI API Key no configurada</strong> — necesaria para generar imagenes.'
       + '<button onclick="showP(\'settings\',null)" style="margin-left:8px;padding:3px 10px;border:1px solid #D97706;border-radius:4px;background:white;font-size:11px;cursor:pointer;color:#92400E">Ir a Settings</button>'
       + '</div>';
   }
@@ -197,7 +197,7 @@ function vsSinglePanel(hasKey) {
       + '<div style="margin-top:10px"><textarea id="vs-img-prompt" class="fi" style="min-height:80px;font-size:12px;font-family:monospace;line-height:1.5">' + escHtml(VS_IMG_PROMPT) + '</textarea></div>'
       + '<div style="margin-top:10px;display:flex;gap:10px;align-items:center">'
       + '<button onclick="vsGenerateImage()" id="vs-gen-img-btn" style="padding:9px 18px;background:var(--purple);color:white;border:none;border-radius:var(--r);font-size:13px;font-weight:500;cursor:pointer;font-family:\'DM Sans\',sans-serif' + (!hasKey ? ';opacity:.5' : '') + '" ' + (!hasKey ? 'disabled' : '') + '>Generar imagen con Gemini</button>'
-      + '<span style="font-size:11px;color:var(--ht)">Gemini Imagen 3 - ' + VS_FORMATS[VS_FORMAT].label + '</span>'
+      + '<span style="font-size:11px;color:var(--ht)">DALL-E 3 - ' + VS_FORMATS[VS_FORMAT].label + '</span>'
       + '</div></div>';
   }
   if (VS_CAPTION) {
@@ -273,7 +273,7 @@ function vsBatchPanel(hasKey) {
     + '<div style="margin-top:16px;display:flex;gap:10px;align-items:center;flex-wrap:wrap">'
     + '<button onclick="vsBatchGenerate()" id="vs-batch-btn" style="padding:10px 24px;background:var(--purple);color:white;border:none;border-radius:var(--r);font-size:13px;font-weight:500;cursor:pointer;font-family:\'DM Sans\',sans-serif' + (!hasKey ? ';opacity:.5;cursor:not-allowed' : '') + '" ' + (!hasKey ? 'disabled' : '') + '>Generar todos los posts</button>'
     + '<button onclick="vsBatchStop()" id="vs-batch-stop-btn" style="display:none;padding:10px 16px;background:#FEF2F2;color:var(--red);border:1px solid #FECACA;border-radius:var(--r);font-size:12px;font-weight:500;cursor:pointer;font-family:\'DM Sans\',sans-serif">Detener</button>'
-    + '<span style="font-size:11px;color:var(--ht)">~20 seg por post - Gemini Imagen 3</span>'
+    + '<span style="font-size:11px;color:var(--ht)">~20 seg por post - DALL-E 3</span>'
     + '</div></div></div>'
 
     + '<div id="vs-batch-progress" style="display:none;margin-bottom:16px;background:var(--sf);border:1px solid var(--bd);border-radius:var(--r);padding:12px 14px">'
@@ -314,8 +314,8 @@ async function vsBatchGenerate() {
     return;
   }
 
-  var key = (typeof CFG !== 'undefined') ? CFG.geminiKey : '';
-  if (!key) { alert('Configura tu Gemini API Key en Settings.'); return; }
+  var key = (typeof CFG !== 'undefined') ? CFG.openaiKey : '';
+  if (!key) { alert('Configura tu OpenAI API Key en Settings.'); return; }
 
   VS_BATCH_RUNNING = true;
   VS_BATCH_STOP    = false;
@@ -382,7 +382,7 @@ async function vsBatchGenerate() {
 async function vsBatchGetPrompt(caption, intelligence, styleData, formatData) {
   var systemPrompt = intelligence + '\n\n'
     + 'VISUAL STUDIO - DIRECTOR CREATIVO (MODO BATCH)\n'
-    + 'El caption ya esta escrito. Tu unica tarea: crear el prompt para Gemini Imagen 3 que mejor visualice la idea del caption.\n\n'
+    + 'El caption ya esta escrito. Tu unica tarea: crear el prompt para DALL-E 3 que mejor visualice la idea del caption.\n\n'
     + 'FORMATO: ' + formatData.label + '\n'
     + 'ESTILO: ' + styleData.label + ' - ' + styleData.desc + '\n\n'
     + 'REGLAS:\n'
@@ -408,38 +408,34 @@ async function vsBatchGetPrompt(caption, intelligence, styleData, formatData) {
   return { geminiPrompt: match ? match[1].trim() : text.trim() };
 }
 
-/* ── Gemini 2.0 Flash: generar imagen (funciona con AI Studio key gratuita) ── */
+/* ── DALL-E 3 (OpenAI): generar imagen ── */
 async function vsBatchGetImage(prompt, aspectRatio, key) {
-  /* Incluir aspect ratio en el prompt ya que generateContent no tiene param nativo */
-  var arHint = aspectRatio === '9:16' ? 'vertical 9:16 aspect ratio, portrait orientation, '
-             : aspectRatio === '4:5'  ? 'portrait 4:5 aspect ratio, '
-             : 'square 1:1 aspect ratio, ';
+  /* Mapear aspect ratio a tamaños soportados por DALL-E 3 */
+  var size = aspectRatio === '9:16' ? '1024x1792'
+           : aspectRatio === '4:5'  ? '1024x1792'
+           : '1024x1024';
 
-  var fullPrompt = arHint + prompt;
-
-  var resp = await fetch(
-    'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-exp:generateContent?key=' + key,
-    {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        contents: [{ parts: [{ text: fullPrompt }] }],
-        generationConfig: { responseModalities: ['IMAGE', 'TEXT'] }
-      })
-    }
-  );
+  var resp = await fetch('https://api.openai.com/v1/images/generations', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': 'Bearer ' + key
+    },
+    body: JSON.stringify({
+      model: 'dall-e-3',
+      prompt: prompt,
+      n: 1,
+      size: size,
+      quality: 'standard',
+      response_format: 'b64_json'
+    })
+  });
 
   var data = await resp.json();
-  if (data.error) throw new Error(data.error.message || 'Error Gemini');
-
-  var parts = (data.candidates && data.candidates[0] && data.candidates[0].content && data.candidates[0].content.parts) || [];
-  var imgPart = null;
-  for (var i = 0; i < parts.length; i++) {
-    if (parts[i].inlineData) { imgPart = parts[i]; break; }
-  }
-
-  if (!imgPart) throw new Error('Gemini no devolvio imagen. Revisa que el prompt no viole las politicas de contenido.');
-  return { b64: imgPart.inlineData.data, mime: imgPart.inlineData.mimeType || 'image/png' };
+  if (data.error) throw new Error(data.error.message || 'Error DALL-E 3');
+  var img = data.data && data.data[0];
+  if (!img || !img.b64_json) throw new Error('DALL-E no devolvio imagen.');
+  return { b64: img.b64_json, mime: 'image/png' };
 }
 
 /* ── Progreso ── */
@@ -563,8 +559,8 @@ function vsBatchShowFeedback(index) {
 async function vsBatchRegenerateOne(index) {
   var feedbackEl = document.getElementById('vs-feedback-text-' + index);
   var feedback   = feedbackEl ? feedbackEl.value.trim() : '';
-  var key = (typeof CFG !== 'undefined') ? CFG.geminiKey : '';
-  if (!key) { alert('Configura tu Gemini API Key en Settings.'); return; }
+  var key = (typeof CFG !== 'undefined') ? CFG.openaiKey : '';
+  if (!key) { alert('Configura tu OpenAI API Key en Settings.'); return; }
 
   var d = window.VS_BATCH_IMGS && window.VS_BATCH_IMGS[index];
   var caption = d ? d.caption : '';
@@ -590,7 +586,7 @@ async function vsBatchRegenerateOne(index) {
 
     var systemPrompt = intelligence + '\n\n'
       + 'VISUAL STUDIO - REGENERACION CON FEEDBACK\n'
-      + 'La imagen anterior no convencio. Genera un nuevo prompt para Gemini Imagen 3 aplicando el feedback.\n\n'
+      + 'La imagen anterior no convencio. Genera un nuevo prompt para DALL-E 3 aplicando el feedback.\n\n'
       + 'FORMATO: ' + formatData.label + '\n'
       + 'ESTILO BASE: ' + styleData.label + ' - ' + styleData.desc + '\n\n'
       + 'FEEDBACK DEL USUARIO: ' + (feedback || 'Regenerar con variacion diferente') + '\n\n'
@@ -678,7 +674,7 @@ async function vsGenerateBrief() {
 
     var systemPrompt = intelligence + '\n\n'
       + 'VISUAL STUDIO - DIRECTOR CREATIVO\n'
-      + 'Convierte el concepto en: (1) brief creativo, (2) prompt Gemini Imagen 3, (3) caption Instagram.\n\n'
+      + 'Convierte el concepto en: (1) brief creativo, (2) prompt DALL-E 3, (3) caption Instagram.\n\n'
       + 'FORMATO: ' + formatData.label + ' (' + formatData.w + 'x' + formatData.h + 'px)\n'
       + 'ESTILO: ' + styleData.label + ' - ' + styleData.desc + '\n\n'
       + 'REGLAS PROMPT: en INGLES, incluir: ' + styleData.gemini_hint + ', terminar con: high quality, 4K, professional social media content\n\n'
@@ -704,7 +700,7 @@ async function vsGenerateBrief() {
     VS_CAPTION    = captionMatch ? captionMatch[1].trim() : '';
     vsSave();
 
-    var hasKey = !!(typeof CFG !== 'undefined' && CFG.geminiKey);
+    var hasKey = !!(typeof CFG !== 'undefined' && CFG.openaiKey);
     var step2el = document.getElementById('vs-step2');
     if (step2el) {
       var html = '';
@@ -717,7 +713,7 @@ async function vsGenerateBrief() {
           + '<div style="margin-top:10px"><textarea id="vs-img-prompt" class="fi" style="min-height:90px;font-size:12px;font-family:monospace;line-height:1.5">' + escHtml(VS_IMG_PROMPT) + '</textarea></div>'
           + '<div style="margin-top:10px;display:flex;gap:10px;align-items:center">'
           + '<button onclick="vsGenerateImage()" id="vs-gen-img-btn" style="padding:9px 18px;background:var(--purple);color:white;border:none;border-radius:var(--r);font-size:13px;font-weight:500;cursor:pointer;font-family:\'DM Sans\',sans-serif' + (!hasKey ? ';opacity:.5' : '') + '" ' + (!hasKey ? 'disabled' : '') + '>Generar imagen con Gemini</button>'
-          + '<span style="font-size:11px;color:var(--ht)">Gemini Imagen 3 - ' + VS_FORMATS[VS_FORMAT].label + '</span>'
+          + '<span style="font-size:11px;color:var(--ht)">DALL-E 3 - ' + VS_FORMATS[VS_FORMAT].label + '</span>'
           + '</div></div>';
       }
       if (VS_CAPTION) {
@@ -745,14 +741,14 @@ async function vsGenerateImage() {
   var prompt   = promptEl ? promptEl.value.trim() : VS_IMG_PROMPT;
   if (!prompt) { alert('No hay prompt. Genera el brief primero.'); return; }
 
-  var key = (typeof CFG !== 'undefined') ? CFG.geminiKey : '';
-  if (!key) { alert('Configura tu Gemini API Key en Settings.'); return; }
+  var key = (typeof CFG !== 'undefined') ? CFG.openaiKey : '';
+  if (!key) { alert('Configura tu OpenAI API Key en Settings.'); return; }
 
   var btn = document.getElementById('vs-gen-img-btn');
   if (btn) { btn.disabled = true; btn.textContent = 'Generando imagen...'; }
 
   var previewEl = document.getElementById('vs-img-preview');
-  if (previewEl) previewEl.innerHTML = '<div class="ld"><div class="sp2"></div>Gemini Imagen 3 esta generando... (~10-20s)</div>';
+  if (previewEl) previewEl.innerHTML = '<div class="ld"><div class="sp2"></div>DALL-E 3 esta generando... (~10-20s)</div>';
 
   try {
     var imgResult = await vsBatchGetImage(prompt, VS_FORMATS[VS_FORMAT].gemini, key);

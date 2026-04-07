@@ -7,7 +7,7 @@
 function buildSettings(){
   const pfs=[
     {id:'anthropic',icon:'🤖',name:'Anthropic API Key — IA (obligatorio para buscadores)',bg:'#F5F3FF',fields:[{k:'ak',l:'API Key',ph:'sk-ant-api03-…',hint:'<a href="https://console.anthropic.com/settings/keys" target="_blank">console.anthropic.com</a> → API Keys → Create Key'}]},
-    {id:'gemini',icon:'✨',name:'Google Gemini — Visual Studio (generación de imágenes)',bg:'#F0FDF4',fields:[{k:'geminiKey',l:'API Key',ph:'AIzaSy…',hint:'<a href="https://aistudio.google.com/app/apikey" target="_blank">Google AI Studio</a> → Get API Key → Create API key (plan gratuito disponible)'}]},
+    {id:'openai',icon:'🎨',name:'OpenAI — DALL-E 3 (Visual Studio · generación de imágenes)',bg:'#F0FDF4',fields:[{k:'openaiKey',l:'API Key',ph:'sk-proj-…',hint:'<a href="https://platform.openai.com/api-keys" target="_blank">platform.openai.com/api-keys</a> → Create new secret key. Coste: ~$0.04/imagen'}]},
     {id:'g',icon:'📊',name:'Google — GA4 + GSC + Ads',bg:'#FEF2F2',fields:[{k:'clientId',l:'OAuth Client ID',ph:'123456789.apps.googleusercontent.com',hint:'<a href="https://console.cloud.google.com/apis/credentials" target="_blank">Google Cloud</a> → Credentials'},{k:'ga4',l:'GA4 Property ID',ph:'properties/529427059'},{k:'gsc',l:'Search Console URL (optional)',ph:'https://www.proximorol.com/'},{k:'ads',l:'Google Ads Customer ID (optional)',ph:'559-870-7352'},{k:'adsToken',l:'Developer Token (optional)',ph:'ABcDeFgH1234567890',hint:'<a href="https://ads.google.com/aw/apicenter" target="_blank">Google Ads</a> → Tools → API Center → Developer token'}]},
     {id:'li',icon:'💼',name:'LinkedIn',bg:'#EFF6FF',fields:[{k:'liId',l:'App Client ID',ph:'LinkedIn Client ID',hint:'<a href="https://www.linkedin.com/developers/apps" target="_blank">LinkedIn Developers</a> → tu app → Auth'},{k:'liSecret',l:'App Client Secret',ph:'••••••••••••••••',hint:'LinkedIn Developers → tu app → Auth → Client Secret'},{k:'liOrg',l:'Organization URN',ph:'urn:li:organization:12345678',hint:'Formato <strong>urn:li:organization:NÚMEROS</strong> — el ID numérico aparece en la URL de tu página de empresa'},{k:'liToken',l:'Access Token',ph:'AQX... (generado con el botón OAuth)',hint:'<button class="btn-s" style="font-size:11px;padding:4px 10px;margin-top:4px" onclick="liStartOAuth()">🔗 Conectar con LinkedIn OAuth</button> — guarda Client ID + Secret primero, luego haz clic aquí'}]},
     {id:'inst',icon:'📧',name:'Mailing masivo (Instantly)',bg:'#F5F3FF',fields:[{k:'instantly',l:'API Key',ph:'inst_xxxxxxxxxxxx',hint:'<a href="https://app.instantly.ai/app/settings/integrations" target="_blank">Instantly</a> → API'}]},
@@ -31,7 +31,7 @@ function tgS(id){
 
 function svS(id){
   // ── CAMBIO: añadir gemini al mapa de guardado ──
-  const m={anthropic:{ak:'sf-ak'},gemini:{geminiKey:'sf-geminiKey'},g:{clientId:'sf-clientId',ga4:'sf-ga4',gsc:'sf-gsc',ads:'sf-ads',adsToken:'sf-adsToken'},li:{liId:'sf-liId',liSecret:'sf-liSecret',liOrg:'sf-liOrg',liToken:'sf-liToken'},inst:{instantly:'sf-instantly'},mon:{monday:'sf-monday'},hunter:{hunter:'sf-hunter'},meta:{metaToken:'sf-metaToken',metaIgId:'sf-metaIgId',metaPageId:'sf-metaPageId'}};
+  const m={anthropic:{ak:'sf-ak'},openai:{openaiKey:'sf-openaiKey'},g:{clientId:'sf-clientId',ga4:'sf-ga4',gsc:'sf-gsc',ads:'sf-ads',adsToken:'sf-adsToken'},li:{liId:'sf-liId',liSecret:'sf-liSecret',liOrg:'sf-liOrg',liToken:'sf-liToken'},inst:{instantly:'sf-instantly'},mon:{monday:'sf-monday'},hunter:{hunter:'sf-hunter'},meta:{metaToken:'sf-metaToken',metaIgId:'sf-metaIgId',metaPageId:'sf-metaPageId'}};
   Object.entries(m[id]||{}).forEach(([k,eid])=>{
     const el=document.getElementById(eid);
     if(el){let v=el.value.trim();if(k==='ga4'&&v&&!v.startsWith('properties/'))v='properties/'+v;CFG[k]=v;}
@@ -45,7 +45,7 @@ function svS(id){
 
 function clrS(id){
   // ── CAMBIO: añadir gemini al mapa de borrado ──
-  const m={anthropic:['ak'],gemini:['geminiKey'],g:['clientId','ga4','gsc','ads'],li:['liId','liSecret','liOrg','liToken'],inst:['instantly'],mon:['monday'],hunter:['hunter'],meta:['metaToken','metaIgId','metaPageId']};
+  const m={anthropic:['ak'],openai:['openaiKey'],g:['clientId','ga4','gsc','ads'],li:['liId','liSecret','liOrg','liToken'],inst:['instantly'],mon:['monday'],hunter:['hunter'],meta:['metaToken','metaIgId','metaPageId']};
   (m[id]||[]).forEach(k=>CFG[k]='');
   localStorage.setItem(CK,JSON.stringify(CFG));
   buildSettings();
