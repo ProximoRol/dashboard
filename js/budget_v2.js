@@ -3,8 +3,10 @@
    Carga DESPUÉS de budget.js. Sobreescribe renderBudgetPage.
    ═══════════════════════════════════════════════════════════════ */
 
-/* Guardar referencia a la función original ANTES de sobreescribir */
-const _bgtOrigRender = typeof renderBudgetPage === 'function' ? renderBudgetPage : null;
+/* Guardar referencia a la función original ANTES de sobreescribir.
+   IMPORTANTE: usar variable asignada (no function declaration) para evitar
+   que el hoisting de JS haga que _bgtOrigRender se apunte a sí misma. */
+const _bgtOrigRender = (typeof renderBudgetPage === 'function') ? renderBudgetPage : null;
 
 const BGT2_KEY    = 'pr_budget_v2';
 const BGT2_ACT    = 'eco_actual_v2';
@@ -35,44 +37,36 @@ function bgt2SyncGlobal(cfg){
   BGT_DATA.months=BGT2_MONTHS;
 }
 
-/* ══ NUEVA renderBudgetPage ══ */
-function renderBudgetPage(){
+/* ══ NUEVA renderBudgetPage — asignada a variable (no function declaration)
+   para que el hoisting no la ponga por encima de la captura del original ══ */
+renderBudgetPage = function(){
   const cfg=bgt2Load();
   if(!cfg){ bgt2ShowSetup(); return; }
 
-  /* 1. Sincronizar BGT_DATA PRIMERO */
+  /* 1. Sincronizar BGT_DATA */
   bgt2SyncGlobal(cfg);
 
-  /* 2. Debug — ver en consola qué llega */
-  console.log('[Budget] cats:', Object.keys(BGT_DATA.catColors).length,
-    '| rows:', BGT_DATA.rows.length,
-    '| _bgtOrigRender:', typeof _bgtOrigRender,
-    '| annual:', BGT_DATA.annualTotal);
-
-  /* 3. Ocultar wizard */
+  /* 2. Ocultar wizard */
   const sw=document.getElementById('bgt2-setup');
   if(sw) sw.style.display='none';
 
-  /* 4. Mostrar divs */
+  /* 3. Mostrar divs de contenido */
   ['budget-insights-wrap','budget-bar-chart','budget-ytd-bars','budget-detail-table']
     .forEach(id=>{const e=document.getElementById(id);if(e)e.style.display='';});
 
-  /* 5. Toolbar */
+  /* 4. Toolbar */
   bgt2EnsureToolbar(cfg);
 
-  /* 6. Renderizar — doble rAF + setTimeout como triple safety */
-  function _doRender(){
+  /* 5. Llamar render original (budget.js) dentro de doble rAF */
+  requestAnimationFrame(()=>requestAnimationFrame(()=>{
     try{
       if(typeof _bgtOrigRender==='function') _bgtOrigRender();
-      else console.warn('[Budget] _bgtOrigRender no disponible');
-    }catch(err){ console.error('[Budget] Error render:', err); }
-  }
-  requestAnimationFrame(()=>requestAnimationFrame(_doRender));
-  setTimeout(_doRender, 200);
+    }catch(err){ console.error('[Budget] render error:', err); }
+  }));
 
-  /* 7. Patch upload */
+  /* 6. Patch upload buttons */
   setTimeout(()=>bgt2PatchUpload(cfg),100);
-}
+};
 
 /* ── Toolbar ── */
 function bgt2EnsureToolbar(cfg){
