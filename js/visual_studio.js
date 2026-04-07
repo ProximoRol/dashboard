@@ -238,6 +238,8 @@ function loadVisualStudio() {
     VS_CAPTION    = saved.caption   || '';
     VS_IMG_B64    = saved.imgB64    || '';
     VS_IMG_MIME   = saved.imgMime   || 'image/png';
+    /* Si el estilo guardado ya no existe en VS_STYLES, resetear al primero */
+    if (!VS_STYLES[VS_STYLE]) VS_STYLE = Object.keys(VS_STYLES)[0];
   }
   vsRender(el);
 }
