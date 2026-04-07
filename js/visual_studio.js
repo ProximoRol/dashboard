@@ -22,29 +22,23 @@ let VS_BATCH_STOP    = false;
 
 /* ── Estilos visuales disponibles ── */
 const VS_STYLES = {
-  tipografico: {
-    label: 'Bold / Tipografico',
-    icon: 'T',
-    desc: 'Texto impactante como protagonista. Fondo limpio, tipografia grande.',
-    gemini_hint: 'Bold typography as the hero, clean minimal background, strong contrast, modern sans-serif font, professional coaching brand aesthetic, Instagram feed post'
-  },
-  minimalista: {
-    label: 'Minimalista',
-    icon: 'M',
-    desc: 'Espacios en blanco, paleta limitada. Sofisticacion y claridad.',
-    gemini_hint: 'Minimalist design, lots of white space, limited color palette (2-3 colors), subtle geometric elements, premium feel, clean and modern'
-  },
-  datos: {
-    label: 'Datos / Infografia',
-    icon: 'D',
-    desc: 'Estadisticas y cifras visualizadas. Autoridad a traves de numeros.',
-    gemini_hint: 'Data visualization infographic style, clean charts or stats layout, professional color scheme, easy to read numbers and percentages, modern flat design'
-  },
-  fotografico: {
-    label: 'Fotografico',
+  fondo: {
+    label: 'Fondo editable',
     icon: 'F',
-    desc: 'Imagen realista de persona o escena laboral con texto superpuesto.',
-    gemini_hint: 'Realistic professional photography style, office or interview setting, natural lighting, authentic candid feel, with space for text overlay, editorial quality'
+    desc: 'Fondo limpio con atmosfera y espacio vacio para anadir texto en Canva.',
+    prompt_guide: 'Clean editorial background, soft bokeh, professional warm atmosphere, large empty negative space for text overlay, no people, no text, subtle color, minimal'
+  },
+  escena: {
+    label: 'Escena laboral',
+    icon: 'E',
+    desc: 'Persona en entrevista u oficina moderna. Fondo con espacio para texto.',
+    prompt_guide: 'Photorealistic professional, person in job interview or modern office, natural window light, shallow depth of field, editorial photography, empty space on one side for text overlay, no text in image'
+  },
+  detalle: {
+    label: 'Detalle / Textura',
+    icon: 'D',
+    desc: 'Objeto o textura con mood. Ideal como fondo de carrusel o slide.',
+    prompt_guide: 'Close-up detail, professional workspace object such as notebook or laptop, moody cinematic lighting, shallow depth of field, muted tones, large copy space, no text, no charts'
   }
 };
 
@@ -380,32 +374,31 @@ async function vsBatchGenerate() {
 
 /* ── Claude: solo brief + prompt Gemini (caption ya existe) ── */
 async function vsBatchGetPrompt(caption, intelligence, styleData, formatData) {
-  var systemPrompt = intelligence + '\n\n'
-    + 'VISUAL STUDIO - DIRECTOR CREATIVO (MODO BATCH)\n'
-    + 'El caption ya esta escrito. Tu unica tarea: crear el prompt para DALL-E 3 que mejor visualice la idea del caption.\n\n'
-    + 'FORMATO: ' + formatData.label + '\n'
-    + 'ESTILO: ' + styleData.label + ' - ' + styleData.desc + '\n\n'
-    + 'REGLAS:\n'
-    + '- Prompt en INGLES\n'
-    + '- Incluir siempre: ' + styleData.gemini_hint + '\n'
-    + '- NO incluir texto especifico (Gemini falla con texto exacto)\n'
-    + '- Capturar la IDEA del caption visualmente\n'
-    + '- Terminar con: high quality, 4K, professional social media content\n\n'
-    + 'RESPONDE UNICAMENTE CON:\n'
-    + '[PROMPT_GEMINI]\n'
-    + '(el prompt completo en ingles, sin nada mas)';
+  var systemPrompt = 'Eres un director de arte para Instagram. Tu unica tarea es escribir un prompt corto y preciso para DALL-E 3.\n\n'
+    + 'ESTILO: ' + styleData.label + ' — ' + styleData.desc + '\n'
+    + 'BASE DEL ESTILO: ' + styleData.prompt_guide + '\n\n'
+    + 'REGLAS ESTRICTAS:\n'
+    + '- Maximo 30 palabras en el prompt\n'
+    + '- UNA sola escena simple y clara\n'
+    + '- Siempre incluir "copy space for text overlay"\n'
+    + '- NUNCA incluir: texto visible, charts, graficos, datos, numeros, infografias, logos\n'
+    + '- La imagen es un FONDO para editar luego en Canva — debe ser limpia y simple\n'
+    + '- Captura el MOOD del caption, no su contenido literal\n'
+    + '- Terminar con: sharp focus, professional photography\n\n'
+    + 'RESPONDE SOLO CON EL PROMPT. Sin explicaciones, sin etiquetas.';
 
   var body = {
     model: 'claude-haiku-4-5-20251001',
-    max_tokens: 350,
+    max_tokens: 120,
     system: systemPrompt,
-    messages: [{ role: 'user', content: 'Caption:\n' + caption }]
+    messages: [{ role: 'user', content: 'Caption:\n' + caption.slice(0, 300) }]
   };
 
   var data = await antFetch(body);
-  var text = (data.content || []).map(function(b) { return b.text || ''; }).join('');
-  var match = text.match(/\[PROMPT_GEMINI\]([\s\S]*?)$/);
-  return { geminiPrompt: match ? match[1].trim() : text.trim() };
+  var text = (data.content || []).map(function(b) { return b.text || ''; }).join('').trim();
+  /* Limpiar posibles etiquetas residuales */
+  text = text.replace(/\[PROMPT[^\]]*\]/gi, '').replace(/^prompt[:\s]*/i, '').trim();
+  return { geminiPrompt: text };
 }
 
 /* ── DALL-E 3 (OpenAI): generar imagen ── */
@@ -476,13 +469,16 @@ function vsBatchCard(index, state, caption, imgResult, errorMsg) {
 
   var captionCol = '';
   if (state === 'done') {
-    captionCol = '<div style="font-size:12px;line-height:1.6;color:var(--tx);white-space:pre-wrap;max-height:160px;overflow-y:auto">' + escHtml(caption || '') + '</div>'
+    captionCol = '<div style="font-size:12px;line-height:1.6;color:var(--tx);white-space:pre-wrap;max-height:120px;overflow-y:auto">' + escHtml((caption || '').slice(0, 200)) + '...</div>'
+      + '<div style="margin-top:8px;padding:7px 10px;background:#F0FDF4;border:1px solid #BBF7D0;border-radius:var(--r);font-size:11px;color:#166534">'
+      + '&#x1F3A8; <strong>Fondo listo para Canva</strong> — abre esta imagen en Canva o CapCut y añade el texto del caption encima.'
+      + '</div>'
       + '<div style="display:flex;gap:6px;margin-top:6px;flex-wrap:wrap">'
       + '<button onclick="vsBatchCopyCaption(' + index + ')" style="padding:4px 10px;border:1px solid var(--bd2);border-radius:var(--r);font-size:11px;cursor:pointer;background:var(--sf2);color:var(--mt);font-family:\'DM Sans\',sans-serif">Copiar caption</button>'
       + '<button onclick="vsBatchShowFeedback(' + index + ')" id="vs-regen-toggle-' + index + '" style="padding:4px 10px;border:1px solid #FECACA;border-radius:var(--r);font-size:11px;cursor:pointer;background:#FEF2F2;color:var(--red);font-family:\'DM Sans\',sans-serif">No me convence</button>'
       + '</div>'
       + '<div id="vs-feedback-' + index + '" style="display:none;margin-top:8px">'
-      + '<textarea id="vs-feedback-text-' + index + '" class="fi" style="min-height:52px;font-size:12px" placeholder="Ej: quiero algo mas abstracto, sin personas, tonos oscuros..."></textarea>'
+      + '<textarea id="vs-feedback-text-' + index + '" class="fi" style="min-height:52px;font-size:12px" placeholder="Ej: quiero algo mas oscuro, sin personas, mas abstracto..."></textarea>'
       + '<button onclick="vsBatchRegenerateOne(' + index + ')" style="margin-top:6px;padding:5px 14px;background:var(--purple);color:white;border:none;border-radius:var(--r);font-size:11px;font-weight:500;cursor:pointer;font-family:\'DM Sans\',sans-serif">Regenerar imagen</button>'
       + '</div>';
   } else if (state === 'error') {
@@ -674,13 +670,20 @@ async function vsGenerateBrief() {
 
     var systemPrompt = intelligence + '\n\n'
       + 'VISUAL STUDIO - DIRECTOR CREATIVO\n'
-      + 'Convierte el concepto en: (1) brief creativo, (2) prompt DALL-E 3, (3) caption Instagram.\n\n'
-      + 'FORMATO: ' + formatData.label + ' (' + formatData.w + 'x' + formatData.h + 'px)\n'
-      + 'ESTILO: ' + styleData.label + ' - ' + styleData.desc + '\n\n'
-      + 'REGLAS PROMPT: en INGLES, incluir: ' + styleData.gemini_hint + ', terminar con: high quality, 4K, professional social media content\n\n'
+      + 'Convierte el concepto en: (1) brief creativo, (2) prompt DALL-E 3 simple, (3) caption Instagram.\n\n'
+      + 'FORMATO: ' + formatData.label + '\n'
+      + 'ESTILO: ' + styleData.label + ' - ' + styleData.desc + '\n'
+      + 'BASE VISUAL: ' + styleData.prompt_guide + '\n\n'
+      + 'REGLAS PARA EL PROMPT DE IMAGEN:\n'
+      + '- Maximo 30 palabras\n'
+      + '- UNA escena simple y limpia\n'
+      + '- Siempre incluir "copy space for text overlay"\n'
+      + '- NUNCA: texto visible, charts, graficos, datos, infografias\n'
+      + '- La imagen es un FONDO editable en Canva — mood > contenido literal\n'
+      + '- Terminar con: sharp focus, professional photography\n\n'
       + 'FORMATO DE RESPUESTA EXACTO:\n'
-      + '[BRIEF]\nConcepto visual: ...\nPaleta: ...\nComposicion: ...\nTexto a incluir: ...\nMood: ...\n\n'
-      + '[PROMPT_GEMINI]\n(prompt completo en ingles)\n\n'
+      + '[BRIEF]\nMood: ...\nEscena: ...\nPaleta: ...\n\n'
+      + '[PROMPT_DALLE]\n(prompt en ingles, max 30 palabras)\n\n'
       + '[CAPTION]\n(caption completo para Instagram siguiendo la voz de marca)';
 
     var data = await antFetch({
@@ -691,8 +694,8 @@ async function vsGenerateBrief() {
     });
 
     var text = (data.content || []).map(function(b) { return b.text || ''; }).join('');
-    var briefMatch   = text.match(/\[BRIEF\]([\s\S]*?)(?=\[PROMPT_GEMINI\]|$)/);
-    var promptMatch  = text.match(/\[PROMPT_GEMINI\]([\s\S]*?)(?=\[CAPTION\]|$)/);
+    var briefMatch   = text.match(/\[BRIEF\]([\s\S]*?)(?=\[PROMPT_DALLE\]|$)/);
+    var promptMatch  = text.match(/\[PROMPT_DALLE\]([\s\S]*?)(?=\[CAPTION\]|$)/);
     var captionMatch = text.match(/\[CAPTION\]([\s\S]*?)$/);
 
     VS_BRIEF      = briefMatch   ? briefMatch[1].trim()   : text;
