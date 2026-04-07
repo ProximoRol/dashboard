@@ -394,6 +394,19 @@ async function csGenerate() {
     document.getElementById('cs-chat-history').innerHTML = '';
     setNB('content', 'live');
     csSave(CS_AGENT, topic, notes, text);
+    // Mostrar botón "Enviar a Visual Studio" si el agente es Instagram
+    if (CS_AGENT === 'instagram') {
+      let vsBtnArea = document.getElementById('cs-vs-btn-area');
+      if (!vsBtnArea) {
+        vsBtnArea = document.createElement('div');
+        vsBtnArea.id = 'cs-vs-btn-area';
+        outEl.parentNode.insertBefore(vsBtnArea, outEl.nextSibling);
+      }
+      vsBtnArea.innerHTML = '<div style="margin-top:10px;padding:10px 12px;background:#F3EFFF;border:1px solid #DDD6FE;border-radius:var(--r);display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap">'
+        + '<span style="font-size:12px;color:#5B21B6">Contenido listo &mdash; puedes enviarlo directo a Visual Studio</span>'
+        + '<button onclick="csSendToVisualStudio()" style="padding:6px 16px;background:var(--purple);color:white;border:none;border-radius:var(--r);font-size:12px;font-weight:500;cursor:pointer;font-family:\'DM Sans\',sans-serif">Enviar a Visual Studio &rarr;</button>'
+        + '</div>';
+    }
   } catch(e) {
     outEl.innerHTML = `<div style="padding:14px;background:var(--rp);border-radius:var(--r);font-size:12px;color:#991B1B">⚠ ${e.message}</div>`;
   }
@@ -467,6 +480,32 @@ function csDownload(filename, content, type) {
   a.download = filename;
   a.click();
   URL.revokeObjectURL(a.href);
+}
+
+/* ── Bridge: envía contenido a Visual Studio Batch ── */
+function csSendToVisualStudio() {
+  if (!CS_LAST_CONTENT) return;
+  const text = CS_LAST_CONTENT;
+  // Navegar a Visual Studio
+  const navItem = [...document.querySelectorAll('.ni')]
+    .find(el => el.getAttribute('onclick') && el.getAttribute('onclick').includes("'vs'"));
+  showP('vs', navItem || null);
+  // Esperar a que VS renderice y pre-cargar el texto en batch mode
+  requestAnimationFrame(() => requestAnimationFrame(() => {
+    if (typeof vsSetMode === 'function') {
+      vsSetMode('batch');
+      setTimeout(() => {
+        const inputEl = document.getElementById('vs-batch-input');
+        if (inputEl) {
+          inputEl.value = text;
+          inputEl.style.borderColor = 'var(--purple)';
+          inputEl.style.transition = 'border-color .3s';
+          setTimeout(() => { inputEl.style.borderColor = ''; }, 2500);
+          inputEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+      }, 80);
+    }
+  }));
 }
 
 /* ── Bridge: recibe tema y contexto desde Content Audit ── */
