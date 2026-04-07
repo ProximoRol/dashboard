@@ -1,0 +1,1226 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Próximo Rol — Marketing Dashboard</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<script src="https://accounts.google.com/gsi/client" async defer></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+<link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+
+<!-- ONBOARDING -->
+
+
+
+
+<!-- PASSWORD GATE -->
+<div id="pw-gate">
+  <div class="pw-card">
+    <div class="pw-logo">
+      <svg viewBox="0 0 24 24"><path d="M12 1L3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4zm0 4l6 2.67V11c0 3.9-2.63 7.52-6 8.93C8.63 18.52 6 14.9 6 11V7.67L12 5z"/></svg>
+    </div>
+    <div class="pw-title">Próximo Rol</div>
+    <div class="pw-sub">Dashboard privado de Marketing.<br>Introduce la contraseña para continuar.</div>
+    <input class="pw-input" id="pw-input" type="password" placeholder="••••••••" onkeydown="if(event.key==='Enter')checkPw()" autofocus>
+    <button class="pw-btn" onclick="checkPw()">Entrar →</button>
+    <div class="pw-err" id="pw-err"></div>
+  </div>
+</div>
+
+<div id="ob">
+<div class="ob-card">
+  <div style="display:flex;align-items:center;gap:12px;margin-bottom:2rem">
+    <div class="lm"><svg viewBox="0 0 16 16"><path d="M8 2C4.7 2 2 4.7 2 8s2.7 6 6 6 6-2.7 6-6-2.7-6-6-6zm0 2c.6 0 1.2.1 1.7.3L4.3 9.7C4.1 9.2 4 8.6 4 8c0-2.2 1.8-4 4-4zm0 8c-.6 0-1.2-.1-1.7-.3l5.4-5.4c.2.5.3 1.1.3 1.7 0 2.2-1.8 4-4 4z"/></svg></div>
+    <div><div style="font-size:16px;font-weight:600">Próximo Rol</div><div style="font-size:11px;color:var(--mt)">Marketing Intelligence</div></div>
+  </div>
+  <div class="ob-t">Próximo Rol — Marketing Intelligence</div>
+  <div class="ob-d">Connect what you have now. Add more anytime from Settings — no restart needed.</div>
+  <div id="ob-err" class="eb" style="display:none"></div>
+  <div class="plist">
+    <div class="pc" id="pc-g">
+      <div class="ph" onclick="tpf('g')">
+        <div class="pi" style="background:#FEF2F2">📊</div>
+        <div style="flex:1"><div class="pn">Google — GA4 + Search Console + Ads</div><div class="pno">Required · OAuth</div></div>
+        <span class="sp sp-sk" id="pp-g">Not set</span>
+        <svg class="chv" id="cv-g" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg>
+      </div>
+      <div class="pb" id="pb-g">
+        <div class="fl"><label class="fl-l">OAuth Client ID <span style="color:var(--red)">*</span></label><input class="fi" id="i-cid" placeholder="123456789.apps.googleusercontent.com"/><div class="fh"><a href="https://console.cloud.google.com/apis/credentials" target="_blank">Google Cloud</a> → Web app → add http://127.0.0.1:5500 to origins</div></div>
+        <div class="fl"><label class="fl-l">GA4 Property ID <span style="color:var(--red)">*</span></label><input class="fi" id="i-ga4" value="properties/529427059" placeholder="properties/529427059"/></div>
+        <div class="fl"><label class="fl-l">Search Console URL <span style="color:var(--ht);font-weight:400;text-transform:none">(optional)</span></label><input class="fi" id="i-gsc" value="https://www.proximorol.com/" placeholder="https://www.proximorol.com/"/></div>
+        <div class="fl" style="margin-bottom:0"><label class="fl-l">Google Ads Customer ID <span style="color:var(--ht);font-weight:400;text-transform:none">(optional)</span></label><input class="fi" id="i-ads" value="559-870-7352" placeholder="559-870-7352"/></div>
+        <div style="margin-top:.75rem"><button class="btn-s" onclick="saveG()">Save</button></div>
+      </div>
+    </div>
+    <div class="pc" id="pc-li">
+      <div class="ph" onclick="tpf('li')">
+        <div class="pi" style="background:#EFF6FF">💼</div>
+        <div style="flex:1"><div class="pn">LinkedIn</div><div class="pno">Company page · OAuth (app approval needed)</div></div>
+        <span class="sp sp-sk" id="pp-li">Optional</span>
+        <svg class="chv" id="cv-li" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg>
+      </div>
+      <div class="pb" id="pb-li">
+        <div class="fl"><label class="fl-l">App Client ID</label><input class="fi" id="i-liid" placeholder="LinkedIn Client ID"/><div class="fh"><a href="https://www.linkedin.com/developers/apps/new" target="_blank">Create LinkedIn App</a> → Products → Marketing Developer Platform</div></div>
+        <div class="fl" style="margin-bottom:0"><label class="fl-l">Organization URN</label><input class="fi" id="i-liorg" placeholder="urn:li:organization:XXXXXXX"/></div>
+        <div style="margin-top:.75rem;display:flex;gap:8px"><button class="btn-s" onclick="savePF('li')">Save</button><button class="btn-c" onclick="clearPF('li')">Remove</button></div>
+      </div>
+    </div>
+    <div class="pc" id="pc-meta">
+      <div class="ph" onclick="tpf('meta')">
+        <div class="pi" style="background:#FFF0F9">📸</div>
+        <div style="flex:1"><div class="pn">Instagram / Facebook</div><div class="pno">Métricas · Publicación automática · Access Token</div></div>
+        <span class="sp sp-sk" id="pp-meta">Optional</span>
+        <svg class="chv" id="cv-meta" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg>
+      </div>
+      <div class="pb" id="pb-meta">
+        <div class="fl">
+          <label class="fl-l">Access Token</label>
+          <input class="fi" id="i-metatoken" placeholder="EAAxxxxxxx…"/>
+          <div class="fh"><a href="https://developers.facebook.com/tools/explorer" target="_blank">Graph API Explorer</a> → Selecciona "Proximorol Dashboard" → "Generate Access Token"</div>
+        </div>
+        <div class="fl">
+          <label class="fl-l">Instagram Account ID</label>
+          <input class="fi" id="i-metaigid" placeholder="17841439267939398"/>
+          <div class="fh">Tu Instagram Business Account ID</div>
+        </div>
+        <div class="fl" style="margin-bottom:0">
+          <label class="fl-l">Facebook Page ID <span style="font-weight:400;color:var(--ht)">(opcional)</span></label>
+          <input class="fi" id="i-metapageid" placeholder="1092607287263365"/>
+          <div class="fh">ID de tu página de Facebook — para métricas de Facebook</div>
+        </div>
+        <div style="margin-top:.75rem;display:flex;gap:8px">
+          <button class="btn-s" onclick="saveMeta()">Save</button>
+          <button class="btn-c" onclick="clearMeta()">Remove</button>
+        </div>
+      </div>
+    </div>
+    <div class="pc" id="pc-inst">
+      <div class="ph" onclick="tpf('inst')">
+        <div class="pi" style="background:#F5F3FF">⚡</div>
+        <div style="flex:1"><div class="pn">Instantly</div><div class="pno">Email campaigns · API Key</div></div>
+        <span class="sp sp-sk" id="pp-inst">Optional</span>
+        <svg class="chv" id="cv-inst" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg>
+      </div>
+      <div class="pb" id="pb-inst">
+        <div class="fl" style="margin-bottom:0"><label class="fl-l">API Key</label><input class="fi" id="i-inst" placeholder="inst_xxxxxxxxxxxx"/><div class="fh"><a href="https://app.instantly.ai/app/settings/integrations" target="_blank">Instantly</a> → Settings → Integrations → API</div></div>
+        <div style="margin-top:.75rem;display:flex;gap:8px"><button class="btn-s" onclick="savePF('inst')">Save</button><button class="btn-c" onclick="clearPF('inst')">Remove</button></div>
+      </div>
+    </div>
+    <div class="pc" id="pc-mon">
+      <div class="ph" onclick="tpf('mon')">
+        <div class="pi" style="background:#ECFEFF">🏢</div>
+        <div style="flex:1"><div class="pn">CRM / HubSpot</div><div class="pno">Pipeline & oportunidades · API Token</div></div>
+        <span class="sp sp-sk" id="pp-mon">Optional</span>
+        <svg class="chv" id="cv-mon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg>
+      </div>
+      <div class="pb" id="pb-mon">
+        <div class="fl" style="margin-bottom:0"><label class="fl-l">API Token</label><input class="fi" id="i-mon" placeholder="eyJhbGciOiJ…"/><div class="fh"><a href="https://monday.com/apps/manage/tokens" target="_blank">Monday/HubSpot</a> → Profile → Developers → API</div></div>
+        <div style="margin-top:.75rem;display:flex;gap:8px"><button class="btn-s" onclick="savePF('mon')">Save</button><button class="btn-c" onclick="clearPF('mon')">Remove</button></div>
+      </div>
+    </div>
+    <div class="pc" id="pc-hunter">
+      <div class="ph" onclick="tpf('hunter')">
+        <div class="pi" style="background:#FFF7ED">🎯</div>
+        <div style="flex:1"><div class="pn">Hunter.io</div><div class="pno">Prospecting universitario · API Key</div></div>
+        <span class="sp sp-sk" id="pp-hunter">Optional</span>
+        <svg class="chv" id="cv-hunter" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg>
+      </div>
+      <div class="pb" id="pb-hunter">
+        <div class="fl" style="margin-bottom:0"><label class="fl-l">API Key</label><input class="fi" id="i-hunter" placeholder="xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"/><div class="fh"><a href="https://hunter.io/api-keys" target="_blank">hunter.io/api-keys</a> → Plan gratuito: 50 búsquedas/mes</div></div>
+        <div style="margin-top:.75rem;display:flex;gap:8px"><button class="btn-s" onclick="savePF('hunter')">Save</button><button class="btn-c" onclick="clearPF('hunter')">Remove</button></div>
+      </div>
+    </div>
+  </div>
+  <div class="ob-ft">
+    <div style="font-size:12px;color:var(--mt)">Connected: <span style="font-weight:600;color:var(--green)" id="ob-cnt">0</span> / 4</div>
+    <button class="btn-launch" id="btn-l" onclick="launch()" disabled>
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="5 12 12 5 19 12"/><polyline points="5 19 12 12 19 19"/></svg>
+      Launch Dashboard
+    </button>
+  </div>
+</div>
+</div>
+
+<!-- APP -->
+<div id="app">
+  <div class="sidebar">
+    <div class="sb-logo">
+      <div class="slm"><svg viewBox="0 0 16 16"><path d="M8 2C4.7 2 2 4.7 2 8s2.7 6 6 6 6-2.7 6-6-2.7-6-6-6zm0 2c.6 0 1.2.1 1.7.3L4.3 9.7C4.1 9.2 4 8.6 4 8c0-2.2 1.8-4 4-4zm0 8c-.6 0-1.2-.1-1.7-.3l5.4-5.4c.2.5.3 1.1.3 1.7 0 2.2-1.8 4-4 4z"/></svg></div>
+      <div><div style="font-size:13px;font-weight:600">Próximo Rol</div><div style="font-size:10px;color:var(--mt)">Marketing Intel</div></div>
+    </div>
+    <div class="sb-nav">
+      <div class="ns">Inicio</div>
+      <div class="ni active" onclick="showP('guide',this)"><div class="nico">🗺️</div>Guía del dashboard<span class="nb nb-live">New</span></div>
+      <div class="ni" onclick="showP('ov',this)"><div class="nico">📊</div>Overview<span class="nb nb-live">Live</span></div>
+      <div class="ni" onclick="showP('report',this)"><div class="nico">📅</div>Monthly Report<span class="nb nb-off" id="nb-rep">—</span></div>
+      <div class="ns" style="margin-top:6px">Web</div>
+      <div class="ni" onclick="showP('ga4',this)"><div class="nico">📈</div>Google Analytics<span class="nb nb-off" id="nb-ga4">—</span></div>
+      <div class="ni" onclick="showP('gsc',this)"><div class="nico">🔍</div>Search Console<span class="nb nb-off" id="nb-gsc">—</span></div>
+      <div class="ni" onclick="showP('ads',this)"><div class="nico">📢</div>Google Ads<span class="nb nb-off" id="nb-ads">—</span></div>
+      <div class="ni" onclick="showP('kwi',this)"><div class="nico">🧠</div>Keyword Intelligence<span class="nb nb-off" id="nb-kwi">—</span></div>
+      <div class="ni" onclick="showP('seo',this)"><div class="nico">🔎</div>SEO Intelligence<span class="nb nb-off" id="nb-seo">—</span></div>
+      <div class="ns" style="margin-top:6px">Social & Redes</div>
+      <div class="ni" onclick="showP('li',this)"><div class="nico">💼</div>LinkedIn<span class="nb nb-off" id="nb-li">—</span></div>
+      <div class="ni" onclick="showP('inst',this)"><div class="nico">📧</div>Mailing masivo<span class="nb nb-off" id="nb-inst">—</span></div>
+      <div class="ni" onclick="showP('ig',this)"><div class="nico">📸</div>Instagram / Facebook<span class="nb nb-off" id="nb-ig">—</span></div>
+      <div class="ni" style="opacity:.45;cursor:default"><div class="nico">🎬</div>YouTube<span class="nb nb-pend">Pronto</span></div>
+      <div class="ni" style="opacity:.45;cursor:default"><div class="nico">🎵</div>TikTok<span class="nb nb-pend">Pronto</span></div>
+      <div class="ns" style="margin-top:6px">CRM & Pipeline</div>
+      <div class="ni" onclick="showP('opps',this)"><div class="nico">🎯</div>Opportunities<span class="nb nb-off" id="nb-opps">—</span></div>
+      <div class="ni" onclick="showP('mon',this)"><div class="nico">🏢</div>CRM<span class="nb nb-off" id="nb-mon">—</span></div>
+      <div class="ni" onclick="showP('prosp',this)"><div class="nico">🎓</div>Prospecting<span class="nb nb-pend" id="nb-prosp">B2B</span></div>
+      <div class="ni" onclick="showP('exp',this)"><div class="nico">🔬</div>Experimentos<span class="nb nb-off" id="nb-exp">—</span></div>
+      <div class="ns" style="margin-top:6px">Planning</div>
+      <div class="ni" onclick="showP('pnl',this)"><div class="nico">📈</div>P&L · Revenue<span class="nb" style="background:#EFF6FF;color:#2563EB">P&L</span></div>
+      <div class="ni" onclick="showP('review',this)"><div class="nico">📅</div>Revisión periódica<span class="nb" style="background:#F5F3FF;color:#7C3AED">Weekly</span></div>
+      <div class="ni" onclick="showP('budget',this)"><div class="nico">💰</div>Budget & Costs</div>
+      <div class="ns" style="margin-top:6px">Content & IA</div>
+      <div class="ni" onclick="showP('library',this)"><div class="nico">📚</div>Biblioteca<span class="nb" style="background:#EFF6FF;color:#2563EB">Nueva</span></div>
+      <div class="ni" onclick="showP('audit',this)"><div class="nico">🔬</div>Content Audit<span class="nb nb-pend" id="nb-audit">IA</span></div>
+      <div class="ni" onclick="showP('content',this)"><div class="nico">✍️</div>Content Studio<span class="nb nb-pend" id="nb-content">IA</span></div>
+      <div class="ni" style="opacity:.45;cursor:default"><div class="nico">🤖</div>AI Insights<span class="nb nb-pend">Pronto</span></div>
+      <div class="ni" style="opacity:.45;cursor:default"><div class="nico">📅</div>Calendario Editorial<span class="nb nb-pend">Pronto</span></div>
+      <div class="ni" onclick="showP('vs',loadVisualStudio)"><div class="nico">🎨</div>Visual Studio<span class="nb nb-pend">IA</span></div>
+      <div class="ni" style="opacity:.45;cursor:default"><div class="nico">📡</div>Campaign Analyzer<span class="nb nb-pend">Pronto</span></div>
+      <div class="ns" style="margin-top:6px">Account</div>
+      <div class="ni" onclick="showP('settings',this)"><div class="nico">⚙️</div>Settings</div>
+    </div>
+    <div class="sb-bot">
+      <div class="ur">
+        <div class="uav" id="sb-av">M</div>
+        <div style="flex:1;min-width:0"><div style="font-size:12px;font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" id="sb-nm">—</div><div style="font-size:10px;color:var(--ht)">Próximo Rol</div></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="main">
+    <div class="topbar">
+      <div class="pt" id="top-t">Overview</div>
+      <div class="tpr">
+        <div class="dps">
+          <div class="dp active" onclick="setPreset(7,this)" id="dp-7">7d</div>
+          <div class="dp" onclick="setPreset(28,this)" id="dp-28">28d</div>
+          <div class="dp" onclick="setPreset(90,this)" id="dp-90">90d</div>
+          <div class="dp" onclick="setPreset(365,this)" id="dp-365">1y</div>
+          <div class="dp" onclick="toggleDatePicker()" id="dp-custom" style="display:flex;align-items:center;gap:4px">
+            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+            Custom
+          </div>
+        </div>
+
+        <button class="rb" onclick="loadAll()">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 11-2.12-9.36L23 10"/></svg>Refresh
+        </button>
+        <div style="font-size:11px;color:var(--ht);white-space:nowrap" id="upd-t"></div>
+      </div>
+    </div>
+
+    <!-- OVERVIEW -->
+    <div class="page active" id="page-ov">
+      <div class="sh"><span class="sl">Overview</span><div class="sln"></div><button class="info-btn" onclick="openInfoModal('ov')" title="What is this page?">i</button></div>
+      <div id="ov-channel-bar" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin-bottom:16px"></div>
+      <div class="kr" id="ov-kpis"><div class="ld"><div class="sp2"></div>Loading…</div></div>
+      <div class="g2" style="margin-bottom:12px">
+        <div class="cd"><div class="ch"><span class="ct">Sessions over time</span><span class="bg bg-g">GA4</span></div><div class="leg" id="ov-tl-l"></div><div style="position:relative;height:180px"><canvas id="ov-tl"></canvas></div></div>
+        <div class="cd"><div class="ch"><span class="ct">Cost vs Pipeline</span><span class="bg bg-t">YTD</span></div><div id="ov-cost-pipeline" style="padding:4px 0"></div></div>
+      </div>
+      <div class="cd" style="margin-bottom:12px">
+        <div class="ch"><span class="ct">Channel performance comparison</span><span class="bg bg-g">All platforms · YTD</span></div>
+        <div id="ov-channel-table" style="overflow-x:auto"></div>
+      </div>
+      <div class="g2" style="margin-bottom:12px">
+        <div class="cd"><div class="ch"><span class="ct">Traffic sources</span><span class="bg bg-g">GA4</span></div><div class="leg" id="ov-src-l"></div><div style="position:relative;height:180px"><canvas id="ov-src"></canvas></div></div>
+        <div class="cd"><div class="ch"><span class="ct">Pipeline funnel</span><span class="bg bg-t">Opportunities</span></div><div id="ov-opps"></div></div>
+      </div>
+      <div class="g2">
+        <div class="cd"><div class="ch"><span class="ct">LinkedIn</span><span class="bg bg-b">LinkedIn</span></div><div id="ov-li"></div></div>
+        <div class="cd"><div class="ch"><span class="ct">Email campaigns</span><span class="bg bg-p">Instantly</span></div><div id="ov-inst"></div></div>
+      </div>
+    </div>
+    <!-- GA4 -->
+    <div class="page" id="page-ga4">
+      <div class="sh"><span class="sl">Google Analytics 4</span><div class="sln"></div><button class="info-btn" onclick="openInfoModal('ga4')" title="What is this page?">i</button></div>
+      <div class="kr" id="ga4-kpis"><div class="ld"><div class="sp2"></div></div></div>
+      <div class="cd full" style="margin-bottom:12px"><div class="ch"><span class="ct">Sesiones en el tiempo</span><span class="bg bg-g" id="ga4-bg">GA4</span></div><div class="leg" id="ga4-tl-l"></div><div style="position:relative;height:220px"><canvas id="ga4-tl"></canvas></div></div>
+      <div class="g2">
+        <div class="cd"><div class="ch"><span class="ct">Top páginas</span><span class="bg bg-g">GA4</span></div><div id="ga4-pg"><div class="ld"><div class="sp2"></div></div></div></div>
+        <div class="cd"><div class="ch"><span class="ct">Países</span><span class="bg bg-g">GA4</span></div><div id="ga4-geo"><div class="ld"><div class="sp2"></div></div></div></div>
+      </div>
+      <div class="cd" style="margin-bottom:12px"><div class="ch"><span class="ct">Embudo de conversión</span><span class="bg bg-g">GA4</span></div><div class="fn" id="ga4-fn"><div class="ld"><div class="sp2"></div></div></div></div>
+
+      <!-- GA4 Intelligence — auto-loads, 3 panels -->
+      <div class="intel-section cd">
+        <div class="ch"><span class="ct">🎯 Recomendaciones de Campaña</span><span class="bg bg-g">IA · Auto</span></div>
+        <div id="ga4-recs-grid" class="rec-grid"><div class="ld"><div class="sp2"></div>Cargando recomendaciones…</div></div>
+      </div>
+      <div class="g2" style="margin-top:12px">
+        <div class="intel-section cd">
+          <div class="ch"><span class="ct">⚠️ Errores e Issues</span><span class="bg bg-g">Priorizados</span></div>
+          <div id="ga4-errors" class="err-list"><div class="ld"><div class="sp2"></div></div></div>
+        </div>
+        <div class="intel-section cd">
+          <div class="ch"><span class="ct">🔍 Estrategia de Keywords</span><span class="bg bg-g">GSC + IA</span></div>
+          <div id="ga4-keywords" class="kw-grid"><div class="ld"><div class="sp2"></div></div></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- GSC -->
+    <div class="page" id="page-gsc">
+      <div class="sh"><span class="sl">Search Console</span><div class="sln"></div><button class="info-btn" onclick="openInfoModal('gsc')" title="What is this page?">i</button></div>
+      <div class="kr" id="gsc-kpis"></div>
+      <div class="g2" style="margin-bottom:12px">
+        <div class="cd"><div class="ch"><span class="ct">Clicks & Impressions</span><span class="bg bg-b">GSC</span></div><div style="position:relative;height:200px"><canvas id="gsc-tl"></canvas></div></div>
+        <div class="cd"><div class="ch"><span class="ct">Top keywords</span><span class="bg bg-b">GSC</span></div><div id="gsc-q"></div></div>
+      </div>
+      <div class="cd"><div class="ch"><span class="ct">Top pages (organic)</span><span class="bg bg-b">GSC</span></div><div id="gsc-pg"></div></div>
+    </div>
+
+    <!-- ADS -->
+    <div class="page" id="page-ads">
+      <div class="sh"><span class="sl">Google Ads</span><div class="sln"></div><button class="info-btn" onclick="openInfoModal('ads')" title="What is this page?">i</button></div>
+      <div class="kr" id="ads-kpis"></div>
+      <div class="cd" style="margin-bottom:12px">
+        <div class="ch"><span class="ct">Campaigns</span><span class="bg bg-g">Last 30 days</span></div>
+        <div id="ads-c"></div>
+      </div>
+      <div id="ads-w"></div>
+
+      <!-- AI Campaign Recommendations -->
+      <div class="cd" style="margin-top:12px">
+        <div class="ch">
+          <span class="ct">Recomendaciones IA — Campañas</span>
+          <span class="bg" style="background:#F5F3FF;color:#7C3AED">Claude AI</span>
+          <button onclick="runAdsAIRecommendations()" id="ads-ai-btn" style="margin-left:auto;padding:5px 14px;background:var(--purple);color:white;border:none;border-radius:var(--r);font-size:11px;font-weight:500;cursor:pointer;display:flex;align-items:center;gap:5px">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 8 12 12 14 14"/></svg>
+            Analizar campañas
+          </button>
+        </div>
+        <div id="ads-ai-out" style="min-height:60px">
+          <div style="padding:16px;text-align:center;color:var(--ht);font-size:13px">Haz clic en "Analizar campañas" para que Claude revise el rendimiento de tus Google Ads y genere recomendaciones específicas para España, UK y LATAM.</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- LINKEDIN -->
+    <div class="page" id="page-li">
+      <div class="sh"><span class="sl">LinkedIn Company Page</span><div class="sln"></div><button class="info-btn" onclick="openInfoModal('li')" title="What is this page?">i</button></div>
+      <div class="kr" id="li-kpis"></div>
+      <div class="g2" style="margin-bottom:12px">
+        <div class="cd"><div class="ch"><span class="ct">Crecimiento followers</span><span class="bg bg-b">LinkedIn</span></div><div style="position:relative;height:200px"><canvas id="li-fol"></canvas></div></div>
+        <div class="cd"><div class="ch"><span class="ct">Impresiones & Clics por mes</span><span class="bg bg-b">LinkedIn</span></div><div style="position:relative;height:200px"><canvas id="li-post"></canvas></div></div>
+      </div>
+      <div class="g2">
+        <div class="cd"><div class="ch"><span class="ct">Nuevos followers por mes</span><span class="bg bg-b">LinkedIn</span></div><div style="position:relative;height:200px"><canvas id="li-imp"></canvas></div></div>
+        <div class="cd"><div class="ch"><span class="ct">Engagement rate (%)</span><span class="bg bg-b">LinkedIn</span></div><div style="position:relative;height:200px"><canvas id="li-eng"></canvas></div></div>
+      </div>
+      <div class="cd"><div class="ch"><span class="ct">Top posts this period</span><span class="bg bg-b">LinkedIn</span></div><div id="li-posts-t"></div></div>
+
+      <!-- ── COMPETITOR ANALYSIS ── -->
+      <div class="cd" id="comp-analysis-card" style="margin-top:12px">
+        <div class="ch">
+          <div style="display:flex;align-items:center;gap:10px">
+            <span style="font-size:20px">🔍</span>
+            <div>
+              <div class="ct">Análisis de Competidores LinkedIn</div>
+              <div style="font-size:11px;color:var(--ht);margin-top:1px">IA + búsqueda web en tiempo real · hasta 3 competidores</div>
+            </div>
+          </div>
+          <span class="bg" style="background:var(--pp);color:var(--purple)">Claude AI</span>
+        </div>
+
+        <!-- COUNTRY + SUGGESTIONS -->
+        <div style="display:flex;gap:10px;align-items:flex-start;margin-bottom:16px;flex-wrap:wrap">
+          <div style="flex:0 0 180px">
+            <label style="font-size:11px;color:var(--ht);font-weight:500;display:block;margin-bottom:5px">MERCADO / PAÍS</label>
+            <select id="comp-country" class="fi" style="font-family:'DM Sans',sans-serif;cursor:pointer" onchange="compLoadSuggestions()">
+              <option value="España">🇪🇸 España</option>
+              <option value="México">🇲🇽 México</option>
+              <option value="Argentina">🇦🇷 Argentina</option>
+              <option value="Colombia">🇨🇴 Colombia</option>
+              <option value="Chile">🇨🇱 Chile</option>
+              <option value="UK">🇬🇧 United Kingdom</option>
+              <option value="Global">🌍 Global / Todos</option>
+            </select>
+          </div>
+          <div style="flex:1;min-width:200px">
+            <label style="font-size:11px;color:var(--ht);font-weight:500;display:block;margin-bottom:5px">COMPETIDORES SUGERIDOS</label>
+            <div id="comp-suggestions" style="display:flex;flex-wrap:wrap;gap:6px;min-height:32px">
+              <span style="font-size:11px;color:var(--ht);padding:4px 0">Cargando sugerencias...</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- COMPETITOR INPUTS -->
+        <div style="margin-bottom:16px">
+          <label style="font-size:11px;color:var(--ht);font-weight:500;display:block;margin-bottom:8px">COMPETIDORES A ANALIZAR <span style="color:var(--green)">(máx. 3)</span></label>
+          <div id="comp-inputs" style="display:flex;flex-direction:column;gap:8px">
+            <div class="comp-input-row" style="display:flex;gap:8px;align-items:center">
+              <div style="width:24px;height:24px;background:var(--gp);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:600;color:var(--green);flex-shrink:0">1</div>
+              <input class="fi comp-name" placeholder="Nombre empresa o URL LinkedIn (ej: Michael Page España)" style="flex:1" />
+            </div>
+            <div class="comp-input-row" style="display:flex;gap:8px;align-items:center">
+              <div style="width:24px;height:24px;background:var(--bp);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:600;color:var(--blue);flex-shrink:0">2</div>
+              <input class="fi comp-name" placeholder="Competidor 2 (opcional)" style="flex:1" />
+            </div>
+            <div class="comp-input-row" style="display:flex;gap:8px;align-items:center">
+              <div style="width:24px;height:24px;background:var(--ap);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:600;color:var(--amber);flex-shrink:0">3</div>
+              <input class="fi comp-name" placeholder="Competidor 3 (opcional)" style="flex:1" />
+            </div>
+          </div>
+        </div>
+
+        <!-- DEPTH TOGGLE -->
+        <div style="display:flex;gap:8px;align-items:center;margin-bottom:16px;flex-wrap:wrap">
+          <label style="font-size:11px;color:var(--ht);font-weight:500">PROFUNDIDAD:</label>
+          <div style="display:flex;gap:6px">
+            <button id="comp-depth-quick" onclick="setCompDepth('quick',this)" class="btn-s" style="font-size:11px;padding:4px 12px;background:var(--green)">⚡ Rápido</button>
+            <button id="comp-depth-deep" onclick="setCompDepth('deep',this)" class="btn-s" style="font-size:11px;padding:4px 12px;background:var(--sf);color:var(--tx);border:1px solid var(--bd2)">🔬 Profundo</button>
+          </div>
+          <span id="comp-depth-hint" style="font-size:11px;color:var(--ht)">Resumen ejecutivo · ~20 seg</span>
+          <div style="flex:1"></div>
+          <button onclick="runCompetitorAnalysis()" id="comp-btn" class="btn-s" style="padding:8px 20px;font-size:13px;display:flex;align-items:center;gap:6px">
+            <span>🔍</span> <span>Analizar competidores</span>
+          </button>
+        </div>
+
+        <!-- RESULTS AREA -->
+        <div id="comp-results" style="display:none">
+          <!-- Loading state -->
+          <div id="comp-loading" style="display:none;text-align:center;padding:2rem">
+            <div id="comp-spinner" style="font-size:24px;margin-bottom:.75rem">🔍</div>
+            <div style="font-weight:500;margin-bottom:.25rem" id="comp-loading-msg">Buscando información de competidores...</div>
+            <div style="font-size:11px;color:var(--ht)" id="comp-loading-sub">Claude está haciendo búsquedas web en tiempo real</div>
+            <div style="margin-top:1rem;height:3px;background:var(--sf2);border-radius:2px;overflow:hidden">
+              <div id="comp-progress-bar" style="height:100%;background:var(--green);width:0%;border-radius:2px;transition:width .5s"></div>
+            </div>
+          </div>
+
+          <!-- Competitor cards -->
+          <div id="comp-cards" style="display:none">
+            <!-- Nav tabs -->
+            <div style="display:flex;gap:4px;margin-bottom:16px;border-bottom:1px solid var(--bd);padding-bottom:0">
+              <button class="comp-tab active" onclick="showCompTab('profiles',this)" style="padding:8px 14px;border:none;background:none;cursor:pointer;font-size:12px;font-weight:500;color:var(--tx);border-bottom:2px solid var(--green);margin-bottom:-1px">👤 Perfiles</button>
+              <button class="comp-tab" onclick="showCompTab('patterns',this)" style="padding:8px 14px;border:none;background:none;cursor:pointer;font-size:12px;font-weight:500;color:var(--ht);border-bottom:2px solid transparent;margin-bottom:-1px">📊 Patrones</button>
+              <button class="comp-tab" onclick="showCompTab('recommendations',this)" style="padding:8px 14px;border:none;background:none;cursor:pointer;font-size:12px;font-weight:500;color:var(--ht);border-bottom:2px solid transparent;margin-bottom:-1px">🎯 Recomendaciones</button>
+              <button class="comp-tab" onclick="showCompTab('more-competitors',this)" style="padding:8px 14px;border:none;background:none;cursor:pointer;font-size:12px;font-weight:500;color:var(--ht);border-bottom:2px solid transparent;margin-bottom:-1px">➕ Más competidores</button>
+            </div>
+            <div id="comp-tab-profiles"></div>
+            <div id="comp-tab-patterns" style="display:none"></div>
+            <div id="comp-tab-recommendations" style="display:none"></div>
+            <div id="comp-tab-more-competitors" style="display:none"></div>
+          </div>
+
+          <!-- Error state -->
+          <div id="comp-error" style="display:none;padding:1rem;background:var(--rp);border-radius:var(--r);border:1px solid #fecaca">
+            <div style="font-weight:500;color:var(--red);margin-bottom:4px">❌ Error en el análisis</div>
+            <div id="comp-error-msg" style="font-size:12px;color:var(--tx)"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- INSTANTLY -->
+    <div class="page" id="page-inst">
+      <div class="sh"><span class="sl">Email Campaigns</span><div class="sln"></div><button class="info-btn" onclick="openInfoModal('inst')" title="What is this page?">i</button></div>
+      <!-- 6 KPI cards -->
+      <div class="kr" id="inst-kpis"></div>
+      <!-- Insights -->
+      <div class="cd" style="margin-bottom:12px">
+        <div class="ch"><span class="ct">Insights</span><span class="bg bg-g">Auto-generated</span></div>
+        <div id="inst-insights" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:10px;padding:4px 0"></div>
+      </div>
+      <!-- Funnel + Chart -->
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px">
+        <div class="cd">
+          <div class="ch"><span class="ct">Engagement funnel</span></div>
+          <div id="inst-funnel" style="padding:4px 0"></div>
+        </div>
+        <div class="cd">
+          <div class="ch"><span class="ct">Open rate by campaign</span><span class="bg bg-p">Top 8</span></div>
+          <div style="position:relative;height:220px"><canvas id="inst-chart"></canvas></div>
+        </div>
+      </div>
+      <!-- Campaign table -->
+      <div class="cd">
+        <div class="ch"><span class="ct">All campaigns</span><span class="bg bg-p">Instantly</span></div>
+        <div id="inst-c"></div>
+      </div>
+    </div>
+    <!-- MONTHLY REPORT -->
+    <div class="page" id="page-report">
+      <div class="sh">
+        <span class="sl" id="rep-month-title">Monthly Report</span>
+        <div class="sln"></div>
+        <button id="rep-ai-btn" onclick="repAISummary()" style="padding:5px 14px;background:var(--pp);color:var(--purple);border:1px solid #DDD6FE;border-radius:var(--r);font-size:12px;font-weight:500;cursor:pointer;font-family:inherit">✦ Generar resumen IA</button>
+      </div>
+
+      <!-- Month selector -->
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:16px;flex-wrap:wrap">
+        <span style="font-size:11px;font-weight:600;color:var(--ht);text-transform:uppercase;letter-spacing:.05em">Mes:</span>
+        <div class="dps" id="month-selector">
+          <div class="dp active" onclick="selectMonth(0,this)">Jan</div>
+          <div class="dp" onclick="selectMonth(1,this)">Feb</div>
+          <div class="dp" onclick="selectMonth(2,this)">Mar</div>
+          <div class="dp" onclick="selectMonth(3,this)">Apr</div>
+          <div class="dp" onclick="selectMonth(4,this)">May</div>
+          <div class="dp" onclick="selectMonth(5,this)">Jun</div>
+          <div class="dp" onclick="selectMonth(6,this)">Jul</div>
+          <div class="dp" onclick="selectMonth(7,this)">Aug</div>
+          <div class="dp" onclick="selectMonth(8,this)">Sep</div>
+          <div class="dp" onclick="selectMonth(9,this)">Oct</div>
+          <div class="dp" onclick="selectMonth(10,this)">Nov</div>
+          <div class="dp" onclick="selectMonth(11,this)">Dec</div>
+        </div>
+      </div>
+
+      <!-- AI Summary output -->
+      <div id="rep-ai-box" style="display:none;background:var(--pp);border:1px solid #DDD6FE;border-radius:var(--r);padding:14px 16px;margin-bottom:14px"></div>
+
+      <!-- KPI Scorecard — auto desde P&L -->
+      <div class="kr" id="rep-kpis" style="margin-bottom:16px"></div>
+
+      <!-- Notas del mes (única entrada manual) -->
+      <div class="cd" style="margin-bottom:12px">
+        <div class="ch"><span class="ct">Notas del mes</span><span class="bg bg-g">Guardar automático</span></div>
+        <textarea id="rep-notes" rows="3" placeholder="Highlights, aprendizajes clave, qué funcionó, qué no, próximos pasos..."
+          onblur="repSaveNotes()"
+          style="width:100%;padding:10px 12px;border:1px solid var(--bd2);border-radius:var(--r);font-size:12px;background:var(--sf2);color:var(--tx);outline:none;resize:vertical;font-family:'DM Sans',sans-serif;line-height:1.6;box-sizing:border-box"></textarea>
+      </div>
+
+      <!-- Revenue vs OpEx MoM + Traffic -->
+      <div class="g2" style="margin-bottom:12px">
+        <div class="cd">
+          <div class="ch"><span class="ct">Revenue vs OpEx vs EBITDA</span><span class="bg bg-g">P&amp;L 2026</span></div>
+          <div style="position:relative;height:200px"><canvas id="rep-revenue-chart"></canvas></div>
+        </div>
+        <div class="cd">
+          <div class="ch"><span class="ct">Tráfico por fuente</span><span class="bg bg-g">GA4</span></div>
+          <div id="rep-sessions-src"></div>
+          <div style="position:relative;height:160px"><canvas id="rep-sessions-chart"></canvas></div>
+        </div>
+      </div>
+
+      <!-- Email chart -->
+      <div class="cd" style="margin-bottom:12px">
+        <div class="ch"><span class="ct">Email campaigns</span><span class="bg bg-p">Instantly</span></div>
+        <div style="position:relative;height:160px"><canvas id="rep-email-chart"></canvas></div>
+      </div>
+
+      <!-- Year-to-date table -->
+      <div class="cd">
+        <div class="ch"><span class="ct">Resumen anual — todas las métricas</span><span class="bg bg-g">Desde P&amp;L</span></div>
+        <div style="overflow-x:auto">
+          <table class="dt">
+            <thead><tr id="rep-year-head"></tr></thead>
+            <tbody id="rep-year-body"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- OPPORTUNITIES (Monday) -->
+    <div class="page" id="page-opps">
+      <div class="sh"><span class="sl">Pipeline — Opportunities</span><div class="sln"></div><button class="info-btn" onclick="openInfoModal('opps')" title="What is this page?">i</button></div>
+      
+      <!-- GLOBAL FILTERS -->
+      <div class="cd" style="margin-bottom:12px;padding:14px 18px">
+        <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+          <span style="font-size:11px;font-weight:600;color:var(--ht);text-transform:uppercase;letter-spacing:.05em">Filter:</span>
+          <div style="display:flex;gap:6px;flex-wrap:wrap" id="src-filter-pills"></div>
+          <div style="margin-left:auto;display:flex;gap:6px">
+            <button onclick="clearOppFilters()" style="padding:4px 10px;border:1px solid var(--bd2);border-radius:20px;font-size:11px;cursor:pointer;background:var(--sf2);color:var(--mt)">Clear filters</button>
+            <select id="stage-filter" onchange="renderOppCharts()" style="padding:4px 10px;border:1px solid var(--bd2);border-radius:var(--r);font-size:11px;background:var(--sf2);color:var(--tx);cursor:pointer">
+              <option value="all">All stages</option>
+              <option value="discovery">Discovery</option>
+              <option value="proposal">Proposal</option>
+              <option value="won">Won</option>
+              <option value="lost">Lost</option>
+            </select>
+            <select id="year-filter" onchange="renderOppCharts()" style="padding:4px 10px;border:1px solid var(--bd2);border-radius:var(--r);font-size:11px;background:var(--sf2);color:var(--tx);cursor:pointer">
+              <option value="2026">2026</option>
+              <option value="2025">2025</option>
+              <option value="all">All years</option>
+            </select>
+          </div>
+        </div>
+      </div>
+
+      <!-- Stage cards -->
+      <div class="stage-cards" id="opps-stages" style="margin-bottom:12px"></div>
+
+      <!-- Monthly by stage -->
+      <div class="g2" style="margin-bottom:12px">
+        <div class="cd">
+          <div class="ch"><span class="ct">Created by month — by stage</span><span class="bg bg-t">Monday</span></div>
+          <div style="position:relative;height:220px"><canvas id="opps-monthly"></canvas></div>
+        </div>
+        <div class="cd">
+          <div class="ch"><span class="ct">Created by month — by source</span><span class="bg bg-t">Monday</span></div>
+          <div style="position:relative;height:220px"><canvas id="opps-monthly-src"></canvas></div>
+        </div>
+      </div>
+
+      <!-- Source donut + Amount -->
+      <div class="g2" style="margin-bottom:12px">
+        <div class="cd">
+          <div class="ch"><span class="ct">By source (Opps Source)</span><span class="bg bg-t">Monday</span></div>
+          <div class="leg" id="opps-src-l" style="cursor:pointer"></div>
+          <div style="position:relative;height:200px"><canvas id="opps-src"></canvas></div>
+        </div>
+        <div class="cd">
+          <div class="ch"><span class="ct">Amount by month (£)</span><span class="bg bg-t">Monday</span></div>
+          <div style="position:relative;height:200px"><canvas id="opps-amt"></canvas></div>
+        </div>
+      </div>
+
+      <!-- All opportunities table with search -->
+      <div class="cd">
+        <div class="ch">
+          <span class="ct">All opportunities</span>
+          <div style="display:flex;gap:8px;align-items:center">
+            <input id="opps-search" type="text" placeholder="Search..." onkeyup="renderOppTable()" style="padding:5px 10px;border:1px solid var(--bd2);border-radius:var(--r);background:var(--sf2);color:var(--tx);font-size:12px;width:160px;outline:none"/>
+            <span class="bg bg-t" id="opps-count-badge">0 results</span>
+          </div>
+        </div>
+        <div id="opps-list"></div>
+      </div>
+    </div>
+
+    <!-- MONDAY -->
+    <div class="page" id="page-mon">
+      <div class="sh"><span class="sl">Monday.com — All Boards</span><div class="sln"></div><button class="info-btn" onclick="openInfoModal('mon')" title="What is this page?">i</button></div>
+      <div class="kr" id="mon-kpis"></div>
+      <div class="cd"><div class="ch"><span class="ct">Boards</span><span class="bg bg-t">Monday</span></div><div id="mon-b"></div></div>
+    </div>
+
+    <!-- BUDGET PAGE - Complete rewrite -->
+        <div class="page" id="page-budget">
+      <div class="sh">
+        <span class="sl">Budget & Costs</span>
+        <div class="sln"></div>
+        <button class="info-btn" onclick="openInfoModal('budget')" title="What is this page?">i</button>
+      </div>
+
+      <!-- Upload / Download bar -->
+      <div style="display:flex;gap:10px;align-items:flex-start;flex-wrap:wrap;margin-bottom:16px">
+        <div class="cd" style="flex:1;min-width:260px;border-left:3px solid var(--green)">
+          <div style="font-size:12px;font-weight:500;margin-bottom:4px">Actual Costs</div>
+          <div style="font-size:11px;color:var(--mt);margin-bottom:10px">
+            Format: <strong>Category · Line Item · Vendor / Description · Amount (GBP) · Month</strong>
+          </div>
+          <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+            <label style="display:inline-flex;align-items:center;gap:6px;padding:7px 14px;background:var(--green);color:white;border-radius:var(--r);font-size:12px;font-weight:500;cursor:pointer">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+              Upload expenses
+              <input type="file" accept=".xlsx,.xls,.csv" style="display:none" onchange="budgetUploadActual(this)"/>
+            </label>
+            <button onclick="downloadExpenseTemplate()" style="display:inline-flex;align-items:center;gap:5px;padding:7px 12px;background:var(--sf2);color:var(--mt);border:1px solid var(--bd2);border-radius:var(--r);font-size:11px;cursor:pointer;font-family:inherit">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+              Download template
+            </button>
+            <button onclick="budgetClearActual()" style="padding:7px 10px;background:none;color:var(--red);border:1px solid #FECACA;border-radius:var(--r);font-size:11px;cursor:pointer;font-family:inherit">Clear</button>
+          </div>
+          <div id="budget-upload-status" style="font-size:11px;color:var(--mt);margin-top:8px"></div>
+          <div id="import-preview" style="display:none;margin-top:6px"></div>
+          <!-- Reassign panel -->
+          <div id="unmatched-panel" style="display:none;margin-top:12px;background:#FFFBEB;border:1.5px solid #FDE68A;border-radius:var(--rl);padding:14px">
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;flex-wrap:wrap;gap:8px">
+              <div>
+                <div style="font-size:12px;font-weight:600;color:#92400E">⚠ Some items were saved as "Other" — reassign if needed</div>
+                <div style="font-size:11px;color:#92400E;margin-top:2px">These are already counted in totals. Use the dropdowns to move them to the right line.</div>
+              </div>
+              <button onclick="applyUnmatchedMappings()" style="padding:7px 16px;background:#D97706;color:white;border:none;border-radius:var(--r);font-size:12px;font-weight:600;cursor:pointer;font-family:inherit;white-space:nowrap">
+                ✓ Apply reassignments
+              </button>
+            </div>
+            <div style="display:grid;grid-template-columns:1fr 1.2fr 1.4fr 0.7fr auto;gap:8px;padding:5px 0 7px;border-bottom:1.5px solid #FDE68A;font-size:10px;font-weight:700;color:#92400E;text-transform:uppercase;letter-spacing:.05em">
+              <div>Category</div><div>From Excel</div><div>Reassign to</div><div>Amount · Month</div><div></div>
+            </div>
+            <div id="unmatched-rows"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Insights -->
+      <div id="budget-insights-wrap" style="margin-bottom:16px"></div>
+
+      <!-- Monthly bar chart -->
+      <div class="cd" style="margin-bottom:12px">
+        <div class="ch"><span class="ct">Monthly Comparison — Target vs Actual</span><span class="bg bg-g">2026</span></div>
+        <div id="budget-bar-chart"></div>
+      </div>
+
+      <!-- YTD category bars -->
+      <div class="cd" style="margin-bottom:12px">
+        <div class="ch"><span class="ct">YTD by Category</span><span class="bg bg-g">Click to expand</span></div>
+        <div id="budget-ytd-bars"></div>
+      </div>
+
+      <!-- Full detail table -->
+      <div class="cd">
+        <div class="ch"><span class="ct">Full Breakdown — All Line Items</span><span class="bg bg-g">Target vs Actual</span></div>
+        <div id="budget-detail-table" style="overflow-x:auto"></div>
+      </div>
+
+    </div>
+<div class="page" id="page-kwi">
+      <div class="sh"><span class="sl">Keyword Intelligence</span><div class="sln"></div><button class="info-btn" onclick="openInfoModal('kwi')" title="What is this page?">i</button></div>
+
+      <!-- Block 1: Branded vs Non-branded split -->
+      <div class="cd" style="margin-bottom:12px" id="kwi-split-card">
+        <div class="ch">
+          <span class="ct">Branded vs. Non-branded traffic</span>
+          <span class="bg bg-b">Search Console</span>
+        </div>
+        <div id="kwi-split-body"><div class="ld"><div class="sp2"></div></div></div>
+      </div>
+
+      <!-- Block 2: AI Keyword Gap Analysis -->
+      <div class="cd" style="margin-bottom:12px">
+        <div class="ch">
+          <span class="ct">AI Keyword Gap Analysis</span>
+          <span class="bg" style="background:#F5F3FF;color:#7C3AED">Claude AI</span>
+        </div>
+        <div style="padding:4px 0">
+          <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px;flex-wrap:wrap">
+            <span style="font-size:12px;color:var(--mt)">Markets:</span>
+            <label style="display:flex;align-items:center;gap:5px;font-size:12px;cursor:pointer"><input type="checkbox" id="kwi-mkt-uk" checked> UK</label>
+            <label style="display:flex;align-items:center;gap:5px;font-size:12px;cursor:pointer"><input type="checkbox" id="kwi-mkt-eu" checked> Europe</label>
+            <label style="display:flex;align-items:center;gap:5px;font-size:12px;cursor:pointer"><input type="checkbox" id="kwi-mkt-us" checked> USA</label>
+            <label style="display:flex;align-items:center;gap:5px;font-size:12px;cursor:pointer"><input type="checkbox" id="kwi-mkt-es"> 🇪🇸 España</label>
+            <label style="display:flex;align-items:center;gap:5px;font-size:12px;cursor:pointer"><input type="checkbox" id="kwi-mkt-latam"> 🌎 LATAM</label>
+            <span style="font-size:12px;color:var(--mt);margin-left:8px">Focus:</span>
+            <select id="kwi-focus" style="padding:4px 10px;border:1px solid var(--bd2);border-radius:var(--r);font-size:12px;background:var(--sf2);color:var(--tx)">
+              <option value="all">All intents</option>
+              <option value="transactional">Transactional (buy intent)</option>
+              <option value="informational">Informational (SEO content)</option>
+              <option value="competitor">Competitor-based</option>
+            </select>
+            <button onclick="runKWIAnalysis()" id="kwi-run-btn" style="padding:6px 16px;background:var(--purple);color:white;border:none;border-radius:var(--r);font-size:12px;font-weight:500;cursor:pointer;display:flex;align-items:center;gap:6px;transition:background .15s">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 8 12 12 14 14"/></svg>
+              Run Analysis
+            </button>
+          </div>
+          <div id="kwi-ai-out" style="min-height:60px"></div>
+        </div>
+      </div>
+
+      <!-- Block 3: Keyword Tracker -->
+      <div class="cd">
+        <div class="ch">
+          <span class="ct">Keyword Tracker</span>
+          <span class="bg bg-g">Saved locally</span>
+          <button onclick="kwiAddKw()" style="margin-left:auto;padding:4px 12px;background:var(--green);color:white;border:none;border-radius:var(--r);font-size:11px;font-weight:500;cursor:pointer">+ Add keyword</button>
+        </div>
+        <div id="kwi-add-row" style="display:none;padding:10px 0;border-bottom:1px solid var(--bd);margin-bottom:8px">
+          <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+            <input id="kwi-kw-input" type="text" placeholder="Ej: coaching de entrevistas Madrid" style="flex:1;min-width:200px;padding:7px 10px;border:1.5px solid var(--green);border-radius:var(--r);font-size:12px;background:var(--sf);color:var(--tx);outline:none"/>
+            <select id="kwi-kw-intent" style="padding:7px 10px;border:1px solid var(--bd2);border-radius:var(--r);font-size:12px;background:var(--sf2);color:var(--tx)">
+              <option value="transactional">Transactional</option>
+              <option value="informational">Informational</option>
+              <option value="navigational">Navigational</option>
+              <option value="competitor">Competitor</option>
+            </select>
+            <select id="kwi-kw-market" style="padding:7px 10px;border:1px solid var(--bd2);border-radius:var(--r);font-size:12px;background:var(--sf2);color:var(--tx)">
+              <option value="UK">🇬🇧 UK</option>
+              <option value="EU">🇪🇺 Europe</option>
+              <option value="USA">🇺🇸 USA</option>
+              <option value="España">🇪🇸 España</option>
+              <option value="LATAM">🌎 LATAM</option>
+              <option value="Global">🌍 Global</option>
+            </select>
+            <select id="kwi-kw-strategy" style="padding:7px 10px;border:1px solid var(--bd2);border-radius:var(--r);font-size:12px;background:var(--sf2);color:var(--tx)">
+              <option value="organic">Organic (SEO)</option>
+              <option value="paid">Paid (Ads)</option>
+              <option value="both">Both</option>
+            </select>
+            <button onclick="kwiSaveKw()" style="padding:7px 14px;background:var(--green);color:white;border:none;border-radius:var(--r);font-size:12px;font-weight:500;cursor:pointer">Save</button>
+            <button onclick="document.getElementById('kwi-add-row').style.display='none'" style="padding:7px 10px;background:none;border:1px solid var(--bd2);border-radius:var(--r);font-size:12px;cursor:pointer;color:var(--mt)">Cancel</button>
+          </div>
+        </div>
+        <div id="kwi-tracker-table"></div>
+      </div>
+
+      <!-- Block 4: SERP Competitor Analyzer -->
+      <div class="cd" style="margin-top:12px">
+        <div class="ch">
+          <span class="ct">SERP Competitor Analyzer</span>
+          <span class="bg" style="background:#FEF2F2;color:#DC2626">Live · Web Search</span>
+        </div>
+        <div style="padding:4px 0">
+          <!-- Search bar -->
+          <div style="display:flex;gap:8px;margin-bottom:14px;flex-wrap:wrap;align-items:center">
+            <input id="serp-input" type="text" placeholder='Ej: "coaching de entrevistas España" o "preparación entrevistas trabajo"' style="flex:1;min-width:260px;padding:9px 14px;border:1.5px solid var(--bd2);border-radius:var(--r);font-size:13px;background:var(--sf);color:var(--tx);outline:none;transition:border-color .15s" onfocus="this.style.borderColor='var(--green)'" onblur="this.style.borderColor='var(--bd2)'" onkeydown="if(event.key==='Enter')runSERPAnalysis()"/>
+            <select id="serp-market" style="padding:9px 12px;border:1px solid var(--bd2);border-radius:var(--r);font-size:12px;background:var(--sf2);color:var(--tx)">
+              <option value="UK">🇬🇧 UK</option>
+              <option value="EU">🇪🇺 Europe</option>
+              <option value="USA">🇺🇸 USA</option>
+              <option value="España">🇪🇸 España</option>
+              <option value="LATAM">🌎 LATAM</option>
+              <option value="Global">🌍 Global</option>
+            </select>
+            <button onclick="runSERPAnalysis()" id="serp-btn" style="padding:9px 18px;background:var(--red);color:white;border:none;border-radius:var(--r);font-size:12px;font-weight:500;cursor:pointer;display:flex;align-items:center;gap:6px;transition:background .15s;white-space:nowrap">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+              Analyze SERP
+            </button>
+          </div>
+          <!-- Quick chips: saved searches -->
+          <div id="serp-history-chips" style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:14px;min-height:0"></div>
+          <!-- Results area -->
+          <div id="serp-results"></div>
+        </div>
+      </div>
+
+      <!-- Block 5: Keyword Economics Planner -->
+      <div class="cd" style="margin-top:12px">
+        <div class="ch">
+          <span class="ct">Keyword Economics Planner</span>
+          <span class="bg" style="background:#ECFEFF;color:#0891B2">ROI + Organic Strategy</span>
+        </div>
+        <div style="padding:4px 0">
+          <div style="display:flex;gap:8px;margin-bottom:14px;flex-wrap:wrap;align-items:flex-end">
+            <div style="flex:1;min-width:220px">
+              <label style="font-size:10px;font-weight:600;color:var(--ht);text-transform:uppercase;letter-spacing:.05em;display:block;margin-bottom:5px">Keyword</label>
+              <input id="econ-kw" type="text" placeholder='Ej: "coaching de entrevistas España"' style="width:100%;padding:8px 12px;border:1.5px solid var(--bd2);border-radius:var(--r);font-size:12px;background:var(--sf);color:var(--tx);outline:none" onfocus="this.style.borderColor='var(--teal)'" onblur="this.style.borderColor='var(--bd2)'" onkeydown="if(event.key==='Enter')runEconAnalysis()"/>
+            </div>
+            <div>
+              <label style="font-size:10px;font-weight:600;color:var(--ht);text-transform:uppercase;letter-spacing:.05em;display:block;margin-bottom:5px">Monthly budget</label>
+              <input id="econ-budget" type="number" min="100" max="50000" step="100" value="500" style="width:100px;padding:8px 10px;border:1.5px solid var(--bd2);border-radius:var(--r);font-size:12px;background:var(--sf);color:var(--tx);outline:none" onfocus="this.style.borderColor='var(--teal)'" onblur="this.style.borderColor='var(--bd2)'"/>
+            </div>
+            <div>
+              <label style="font-size:10px;font-weight:600;color:var(--ht);text-transform:uppercase;letter-spacing:.05em;display:block;margin-bottom:5px">Landing CVR (%)</label>
+              <input id="econ-cvr" type="number" min="0.1" max="20" step="0.1" value="2.5" style="width:80px;padding:8px 10px;border:1.5px solid var(--bd2);border-radius:var(--r);font-size:12px;background:var(--sf);color:var(--tx);outline:none" onfocus="this.style.borderColor='var(--teal)'" onblur="this.style.borderColor='var(--bd2)'"/>
+            </div>
+            <div>
+              <label style="font-size:10px;font-weight:600;color:var(--ht);text-transform:uppercase;letter-spacing:.05em;display:block;margin-bottom:5px">Market</label>
+              <select id="econ-market" style="padding:9px 10px;border:1px solid var(--bd2);border-radius:var(--r);font-size:12px;background:var(--sf2);color:var(--tx)">
+                <option value="UK">🇬🇧 UK</option>
+                <option value="EU">🇪🇺 Europe</option>
+                <option value="USA">🇺🇸 USA</option>
+                <option value="España">🇪🇸 España</option>
+                <option value="LATAM">🌎 LATAM</option>
+              </select>
+            </div>
+            <button onclick="runEconAnalysis()" id="econ-btn" style="padding:9px 18px;background:var(--teal);color:white;border:none;border-radius:var(--r);font-size:12px;font-weight:500;cursor:pointer;display:flex;align-items:center;gap:6px;white-space:nowrap;transition:opacity .15s;align-self:flex-end">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+              Calculate ROI
+            </button>
+          </div>
+          <div id="econ-results"></div>
+        </div>
+      </div>
+    </div>
+
+<!-- SEO INTELLIGENCE -->
+<div class="page" id="page-seo">
+  <div class="sh"><span class="sl">SEO Intelligence</span><div class="sln"></div><button class="info-btn" onclick="openInfoModal('seo')" title="What is this page?">i</button></div>
+
+  <!-- Tab switcher -->
+  <div style="display:flex;gap:4px;margin-bottom:16px;background:var(--sf2);padding:4px;border-radius:var(--r);width:fit-content">
+    <button onclick="seoTab('audit')" id="seotab-audit" class="seotab active-tab" style="padding:6px 14px;border:none;border-radius:8px;font-size:12px;font-weight:500;cursor:pointer;background:var(--green);color:white;font-family:'DM Sans',sans-serif">🔍 Page Auditor</button>
+    <button onclick="seoTab('chat')"  id="seotab-chat"  class="seotab" style="padding:6px 14px;border:none;border-radius:8px;font-size:12px;font-weight:500;cursor:pointer;background:none;color:var(--mt);font-family:'DM Sans',sans-serif">💬 SEO Chat</button>
+    <button onclick="seoTab('spy')"   id="seotab-spy"   class="seotab" style="padding:6px 14px;border:none;border-radius:8px;font-size:12px;font-weight:500;cursor:pointer;background:none;color:var(--mt);font-family:'DM Sans',sans-serif">🕵️ Competitor Spy</button>
+    <button onclick="seoTab('check')" id="seotab-check" class="seotab" style="padding:6px 14px;border:none;border-radius:8px;font-size:12px;font-weight:500;cursor:pointer;background:none;color:var(--mt);font-family:'DM Sans',sans-serif">✅ SEO Checklist</button>
+  </div>
+
+  <!-- BLOCK 1: Page Auditor -->
+  <div id="seopanel-audit">
+    <div class="cd">
+      <div class="ch"><span class="ct">Page Auditor</span><span class="bg" style="background:#FEF2F2;color:#DC2626">Live · Web Fetch</span></div>
+      <div style="padding:4px 0">
+        <div style="font-size:12px;color:var(--mt);margin-bottom:12px">Enter any <strong>proximorol.com</strong> URL and Claude analyses it in real time: title tags, meta description, heading structure, keyword usage, internal links, schema markup, page speed and more.</div>
+        <div style="display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap">
+          <input id="audit-url" type="url" placeholder="https://www.proximorol.com/" style="flex:1;min-width:260px;padding:9px 14px;border:1.5px solid var(--bd2);border-radius:var(--r);font-size:13px;background:var(--sf);color:var(--tx);outline:none" onfocus="this.style.borderColor='var(--red)'" onblur="this.style.borderColor='var(--bd2)'" onkeydown="if(event.key==='Enter')runPageAudit()"/>
+          <select id="audit-focus" style="padding:9px 12px;border:1px solid var(--bd2);border-radius:var(--r);font-size:12px;background:var(--sf2);color:var(--tx)">
+            <option value="full">Full audit</option>
+            <option value="onpage">On-page SEO</option>
+            <option value="content">Content quality</option>
+            <option value="technical">Technical SEO</option>
+            <option value="ux">UX & conversion</option>
+          </select>
+          <button onclick="runPageAudit()" id="audit-btn" style="padding:9px 18px;background:var(--red);color:white;border:none;border-radius:var(--r);font-size:12px;font-weight:500;cursor:pointer;display:flex;align-items:center;gap:6px;white-space:nowrap">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+            Audit Page
+          </button>
+        </div>
+        <!-- Quick URL chips -->
+        <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px">
+          <span style="font-size:11px;color:var(--ht);margin-right:6px;align-self:center">Quick:</span>
+          <button onclick="document.getElementById('audit-url').value='https://www.proximorol.com/'" style="padding:3px 10px;border:1px solid var(--bd2);border-radius:20px;font-size:11px;background:var(--sf2);color:var(--mt);cursor:pointer">/</button>
+          <button onclick="document.getElementById('audit-url').value='https://www.proximorol.com/pack-completo.html'" style="padding:3px 10px;border:1px solid var(--bd2);border-radius:20px;font-size:11px;background:var(--sf2);color:var(--mt);cursor:pointer">/pack-completo</button>
+          <button onclick="document.getElementById('audit-url').value='https://www.proximorol.com/sesion-unica.html'" style="padding:3px 10px;border:1px solid var(--bd2);border-radius:20px;font-size:11px;background:var(--sf2);color:var(--mt);cursor:pointer">/sesion-unica</button>
+          <button onclick="document.getElementById('audit-url').value='https://www.proximorol.com/acompanamiento-total.html'" style="padding:3px 10px;border:1px solid var(--bd2);border-radius:20px;font-size:11px;background:var(--sf2);color:var(--mt);cursor:pointer">/acompanamiento-total</button>
+        </div>
+        <div id="audit-results"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- BLOCK 2: SEO Chat -->
+  <div id="seopanel-chat" style="display:none">
+    <div class="cd">
+      <div class="ch"><span class="ct">SEO Chat</span><span class="bg" style="background:#F5F3FF;color:#7C3AED">Claude AI · Web Search</span></div>
+      <div style="padding:4px 0">
+        <div style="font-size:12px;color:var(--mt);margin-bottom:12px">Ask anything about SEO for Próximo Rol. Claude searches the web and responds with real, up-to-date recommendations specific to your industry (interview coaching, career development).</div>
+        <!-- Suggested prompts -->
+        <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px" id="seo-suggestions">
+          <span style="font-size:11px;color:var(--ht);align-self:center">Suggestions:</span>
+          ${[
+            '¿Cómo estructurar nuestra homepage para posicionar en "coaching de entrevistas" en España?',
+            '¿Qué tipo de contenido genera más backlinks para un servicio de coaching en LATAM?',
+            '¿Cuáles son los errores SEO más comunes en webs de servicios B2C en español?',
+            '¿Cómo mejorar nuestro CTR en Search Console para mercado hispanohablante?',
+            '¿Qué schema markup necesita una web de servicios de coaching?',
+          ].map(s=>`<button onclick="seoAskSuggestion('${s.replace(/'/g,"\\'")}\")" style="padding:4px 10px;border:1px solid var(--bd2);border-radius:20px;font-size:11px;background:var(--sf2);color:var(--mt);cursor:pointer;text-align:left">${s.length>55?s.slice(0,53)+'…':s}</button>`).join('')}
+        </div>
+        <!-- Chat history -->
+        <div id="seo-chat-history" style="max-height:420px;overflow-y:auto;display:flex;flex-direction:column;gap:10px;margin-bottom:12px;padding:4px 0"></div>
+        <!-- Input -->
+        <div style="display:flex;gap=8px;align-items:flex-end;gap:8px">
+          <textarea id="seo-chat-input" placeholder="Ej: ¿Cómo debemos optimizar nuestra landing de sesión única para posicionar en España?" rows="2" style="flex:1;padding:10px 14px;border:1.5px solid var(--bd2);border-radius:var(--r);font-size:13px;background:var(--sf);color:var(--tx);outline:none;resize:vertical;font-family:'DM Sans',sans-serif" onfocus="this.style.borderColor='var(--purple)'" onblur="this.style.borderColor='var(--bd2)'" onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();runSEOChat()}"></textarea>
+          <div style="display:flex;flex-direction:column;gap:6px">
+            <button onclick="runSEOChat()" id="chat-send-btn" style="padding:10px 16px;background:var(--purple);color:white;border:none;border-radius:var(--r);font-size:12px;font-weight:500;cursor:pointer;display:flex;align-items:center;gap:5px;white-space:nowrap">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+              Send
+            </button>
+            <button onclick="seoClearChat()" style="padding:6px 10px;border:1px solid var(--bd2);border-radius:var(--r);font-size:11px;cursor:pointer;background:none;color:var(--ht)">Clear</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- BLOCK 3: Competitor Spy -->
+  <div id="seopanel-spy" style="display:none">
+    <div class="cd">
+      <div class="ch"><span class="ct">Competitor Page Spy</span><span class="bg" style="background:#FEF2F2;color:#DC2626">Live · Web Fetch</span></div>
+      <div style="padding:4px 0">
+        <div style="font-size:12px;color:var(--mt);margin-bottom:12px">Enter a competitor's URL. Claude analyses their content, SEO structure, the keywords they target, and how they position themselves — so you can identify what Próximo Rol can do better.</div>
+        <div style="display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap">
+          <input id="spy-url" type="url" placeholder="https://www.competitor.com/services" style="flex:1;min-width:260px;padding:9px 14px;border:1.5px solid var(--bd2);border-radius:var(--r);font-size:13px;background:var(--sf);color:var(--tx);outline:none" onfocus="this.style.borderColor='var(--red)'" onblur="this.style.borderColor='var(--bd2)'" onkeydown="if(event.key==='Enter')runCompetitorSpy()"/>
+          <input id="spy-vs-url" type="url" placeholder="https://www.proximorol.com/ (optional — compare)" style="flex:1;min-width:200px;padding:9px 14px;border:1.5px solid var(--bd2);border-radius:var(--r);font-size:13px;background:var(--sf);color:var(--tx);outline:none" onfocus="this.style.borderColor='var(--green)'" onblur="this.style.borderColor='var(--bd2)'" onkeydown="if(event.key==='Enter')runCompetitorSpy()"/>
+          <button onclick="runCompetitorSpy()" id="spy-btn" style="padding:9px 18px;background:var(--amber);color:white;border:none;border-radius:var(--r);font-size:12px;font-weight:500;cursor:pointer;display:flex;align-items:center;gap:6px;white-space:nowrap">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+            Spy Page
+          </button>
+        </div>
+        <div id="spy-results"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- BLOCK 4: SEO Checklist -->
+  <div id="seopanel-check" style="display:none">
+    <div class="cd">
+      <div class="ch">
+        <span class="ct">SEO Checklist</span>
+        <span class="bg bg-g">Saved locally</span>
+        <div style="margin-left:auto;display:flex;align-items:center;gap:10px">
+          <span id="seo-check-score" style="font-size:13px;font-weight:600;color:var(--green)">0 / 30</span>
+          <button onclick="seoCheckReset()" style="padding:4px 10px;border:1px solid var(--bd2);border-radius:20px;font-size:11px;cursor:pointer;background:none;color:var(--ht)">Reset</button>
+        </div>
+      </div>
+      <div style="margin-bottom:12px;height:8px;border-radius:20px;background:var(--sf2);overflow:hidden">
+        <div id="seo-check-bar" style="height:100%;background:var(--green);transition:width .4s;width:0%"></div>
+      </div>
+      <div id="seo-checklist-body"></div>
+    </div>
+  </div>
+</div>
+
+<div class="page" id="page-audit">
+  <div class="sh"><span class="sl">Content Audit</span><div class="sln"></div></div>
+  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;flex-wrap:wrap;gap:10px">
+    <div style="display:flex;gap:6px">
+      <span class="ca-range-chip dp active" onclick="caSetRange(30,this)">30d</span>
+      <span class="ca-range-chip dp" onclick="caSetRange(90,this)">90d</span>
+      <span class="ca-range-chip dp" onclick="caSetRange(180,this)">6m</span>
+      <span class="ca-range-chip dp" onclick="caSetRange(365,this)">1y</span>
+    </div>
+    <button id="ca-scan-btn" onclick="caRunScan()" style="display:flex;align-items:center;gap:6px;padding:8px 18px;background:var(--green);color:white;border:none;border-radius:var(--r);font-size:12px;font-weight:500;cursor:pointer;font-family:'DM Sans',sans-serif">
+      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+      Escanear contenido
+    </button>
+    <button onclick="caExportTxt()" style="display:flex;align-items:center;gap:5px;padding:8px 12px;border:1px solid var(--bd2);border-radius:var(--r);font-size:12px;cursor:pointer;background:var(--sf2);color:var(--mt);font-family:'DM Sans',sans-serif">↓ .txt</button>
+    <button onclick="caExportJson()" style="display:flex;align-items:center;gap:5px;padding:8px 12px;border:1px solid var(--bd2);border-radius:var(--r);font-size:12px;cursor:pointer;background:var(--sf2);color:var(--mt);font-family:'DM Sans',sans-serif">↓ .json</button>
+  </div>
+  <div id="audit-main">
+    <div class="notice"><strong>Listo para escanear</strong>Selecciona el rango de fechas y pulsa "Escanear contenido". El agente leerá tu blog, LinkedIn, Search Console y GA4 automáticamente.</div>
+  </div>
+</div>
+
+<div class="page" id="page-content">
+  <div class="sh"><span class="sl">Content Studio</span><div class="sln"></div></div>
+  <div style="display:flex;gap:6px;margin-bottom:16px;flex-wrap:wrap;align-items:center" id="cs-tabs">
+    <button class="cs-tab active" data-agent="instagram" onclick="csTab('instagram',this)">📱 Instagram / TikTok</button>
+    <button class="cs-tab" data-agent="linkedin" onclick="csTab('linkedin',this)">💼 LinkedIn</button>
+    <button class="cs-tab" data-agent="newsletter" onclick="csTab('newsletter',this)">📧 Newsletter</button>
+    <button class="cs-tab" data-agent="youtube" onclick="csTab('youtube',this)">🎬 YouTube</button>
+    <button class="cs-tab" data-agent="ads" onclick="csTab('ads',this)">📢 Google Ads</button>
+    <div style="flex:1"></div>
+    <button class="cs-tab" id="cs-identity-tab-btn" onclick="csShowIdentity()" style="border-style:dashed;border-color:var(--purple)">🎨 Identidad de marca</button>
+  </div>
+  <div id="cs-identity-panel" style="display:none"></div>
+  <div id="cs-main-form">
+  <div class="g2" style="align-items:start">
+    <div>
+      <div class="cd">
+        <div class="ch"><span class="ct" id="cs-agent-title">Agente Instagram / TikTok</span><span class="bg bg-p" id="cs-agent-badge">Reel · Post</span></div>
+        <div style="padding:4px 0">
+          <div style="margin-bottom:12px">
+            <label style="font-size:11px;font-weight:600;color:var(--ht);text-transform:uppercase;letter-spacing:.05em;display:block;margin-bottom:5px">Tema o pregunta</label>
+            <textarea id="cs-topic" rows="3" placeholder="Ej: Por qué el 80% de los candidatos fracasan en la primera entrevista" style="width:100%;padding:9px 12px;border:1.5px solid var(--bd2);border-radius:var(--r);font-size:13px;background:var(--sf);color:var(--tx);outline:none;resize:vertical;font-family:'DM Sans',sans-serif" onfocus="this.style.borderColor='var(--green)'" onblur="this.style.borderColor='var(--bd2)'"></textarea>
+          </div>
+          <div style="margin-bottom:12px">
+            <label style="font-size:11px;font-weight:600;color:var(--ht);text-transform:uppercase;letter-spacing:.05em;display:block;margin-bottom:5px">Notas adicionales <span style="font-weight:400;text-transform:none;font-size:10px;color:var(--ht)">(opcional — datos, ángulos, historias propias)</span></label>
+            <textarea id="cs-notes" rows="2" placeholder="Ej: Incluye el dato de que el 87% de los rechazos ocurren por falta de preparación conductual, no técnica. Tono personal, como si lo hubiera vivido yo." style="width:100%;padding:9px 12px;border:1.5px solid var(--bd2);border-radius:var(--r);font-size:12px;background:var(--sf);color:var(--tx);outline:none;resize:vertical;font-family:'DM Sans',sans-serif" onfocus="this.style.borderColor='var(--purple)'" onblur="this.style.borderColor='var(--bd2)'"></textarea>
+          </div>
+          <div id="cs-depth-wrap">
+            <div style="margin-bottom:12px">
+              <label style="font-size:11px;font-weight:600;color:var(--ht);text-transform:uppercase;letter-spacing:.05em;display:block;margin-bottom:6px">Tono</label>
+              <div style="display:flex;gap:6px;flex-wrap:wrap" id="cs-tone-chips">
+                <span class="cs-chip active" data-val="educativo y cercano">Educativo y cercano</span>
+                <span class="cs-chip" data-val="profesional y directo">Profesional</span>
+                <span class="cs-chip" data-val="inspirador y motivador">Inspirador</span>
+                <span class="cs-chip" data-val="provocador y desafiante">Provocador</span>
+              </div>
+            </div>
+            <div style="margin-bottom:16px">
+              <label style="font-size:11px;font-weight:600;color:var(--ht);text-transform:uppercase;letter-spacing:.05em;display:block;margin-bottom:6px">Profundidad científica</label>
+              <div style="display:flex;gap:6px;flex-wrap:wrap" id="cs-depth-chips">
+                <span class="cs-chip active" data-val="divulgativo">Divulgativo</span>
+                <span class="cs-chip" data-val="intermedio con datos">Con datos</span>
+                <span class="cs-chip" data-val="técnico con referencias">Técnico</span>
+              </div>
+            </div>
+          </div>
+          <div style="background:var(--gp);border:1px solid #9FE1CB;border-radius:var(--r);padding:10px 14px;margin-bottom:14px;font-size:12px;color:var(--green2)">
+            <strong>✓ Contexto activo:</strong> El agente conoce tu negocio, audiencia y mercados (España, UK, LATAM).
+          </div>
+          <button onclick="csGenerate()" id="cs-gen-btn" style="width:100%;padding:10px;background:var(--green);color:white;border:none;border-radius:var(--r);font-size:13px;font-weight:500;cursor:pointer;font-family:'DM Sans',sans-serif;display:flex;align-items:center;justify-content:center;gap:8px;transition:background .15s">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 8 12 12 14 14"/></svg>
+            Generar contenido
+          </button>
+        </div>
+      </div>
+    </div>
+    <div style="display:flex;flex-direction:column;gap:12px">
+      <div class="cd">
+        <div class="ch"><span class="ct" id="cs-out-label">Resultado</span>
+          <div style="display:flex;gap:5px;flex-wrap:wrap">
+            <button onclick="csCopy()" id="cs-copy-btn" style="padding:4px 10px;border:1px solid var(--bd2);border-radius:var(--r);font-size:11px;cursor:pointer;background:var(--sf2);color:var(--mt);display:none">Copiar</button>
+            <button onclick="csExportTxt()" id="cs-export-txt-btn" style="padding:4px 10px;border:1px solid var(--bd2);border-radius:var(--r);font-size:11px;cursor:pointer;background:var(--sf2);color:var(--mt);display:none">↓ .txt</button>
+            <button onclick="csExportAllTxt()" style="padding:4px 10px;border:1px solid var(--bd2);border-radius:var(--r);font-size:11px;cursor:pointer;background:var(--sf2);color:var(--mt)">↓ Todo</button>
+          </div>
+        </div>
+        <div id="cs-output" style="min-height:120px;font-size:13px;line-height:1.7;color:var(--tx);white-space:pre-wrap;padding:4px 0">
+          <div style="text-align:center;padding:32px;color:var(--ht)">
+            <div style="font-size:28px;margin-bottom:10px">✍️</div>
+            <div style="font-size:13px">Elige una plataforma, escribe tu tema y genera el contenido.</div>
+          </div>
+        </div>
+      </div>
+      <div class="cd" id="cs-chat-card" style="display:none">
+        <div class="ch"><span class="ct">Iterar</span><span class="bg bg-p">Chat</span></div>
+        <div id="cs-chat-history" style="max-height:300px;overflow-y:auto;display:flex;flex-direction:column;gap:8px;margin-bottom:10px;padding:4px 0"></div>
+        <div style="display:flex;gap:8px;align-items:flex-end">
+          <textarea id="cs-chat-input" rows="2" placeholder='Ej: "Hazlo más corto" · "Cambia el tono" · "Añade un dato científico"' style="flex:1;padding:8px 12px;border:1.5px solid var(--bd2);border-radius:var(--r);font-size:12px;background:var(--sf);color:var(--tx);outline:none;resize:none;font-family:'DM Sans',sans-serif" onfocus="this.style.borderColor='var(--purple)'" onblur="this.style.borderColor='var(--bd2)'" onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();csChatSend()}"></textarea>
+          <button onclick="csChatSend()" id="cs-chat-send" style="padding:9px 14px;background:var(--purple);color:white;border:none;border-radius:var(--r);font-size:12px;font-weight:500;cursor:pointer;white-space:nowrap">Enviar</button>
+        </div>
+      </div>
+    </div>
+  </div>
+  </div><!-- end cs-main-form -->
+</div>
+
+<div class="page" id="page-prosp">
+  <div class="sh"><span class="sl">Prospecting — Alianzas universitarias</span><div class="sln"></div></div>
+  <div id="prosp-main"></div>
+</div>
+
+<div class="page" id="page-exp">
+  <div class="sh"><span class="sl">Experimentos</span><div class="sln"></div></div>
+</div>
+
+<div class="page" id="page-guide">
+  <div class="sh"><span class="sl">Guía del dashboard</span><div class="sln"></div></div>
+  <div id="guide-main"></div>
+</div>
+
+<div class="page" id="page-ig">
+  <div class="sh">
+    <span class="sl">Instagram / Facebook</span>
+    <div class="sln"></div>
+  </div>
+  <div id="ig-main">
+    <div class="notice">
+      <strong>Instagram no conectado</strong>
+      Añade tu token y cuenta de Instagram en Settings para ver las métricas.
+      <button class="cbtn" onclick="showP('settings',null)">Abrir Settings →</button>
+    </div>
+  </div>
+</div>
+
+<div class="page" id="page-vs">
+  <div class="sh"><span class="sl">Visual Studio</span><div class="sln"></div></div>
+  <div id="vs-main"></div>
+</div>
+
+<div class="page" id="page-settings">
+      <div class="sh"><span class="sl">Platform Connections</span><div class="sln"></div><button class="info-btn" onclick="openInfoModal('settings')" title="What is this page?">i</button></div>
+      <p style="font-size:13px;color:var(--mt);margin-bottom:1.25rem">Add or update credentials anytime. Changes take effect immediately.</p>
+      <div class="stg" id="stg"></div>
+    </div>
+
+    <!-- Library page — contenido inyectado por library.js via renderLibraryPage() -->
+    <div class="page" id="page-library"></div>
+
+    <!-- P&L page — contenido inyectado por pnl.js via injectPNLPage() -->
+    <div class="page" id="page-pnl"></div>
+
+    <!-- Review page — contenido inyectado por review.js via injectReviewPage() -->
+    <div class="page" id="page-review"></div>
+
+  </div>
+</div>
+
+<!-- INFO MODAL -->
+<div id="info-modal-overlay" onclick="if(event.target===this)closeInfoModal()">
+  <div id="info-modal">
+    <button id="info-modal-close" onclick="closeInfoModal()">✕</button>
+    <div id="info-modal-content"></div>
+  </div>
+</div>
+
+<!-- Rec Modal -->
+<div id="rec-modal-overlay" onclick="if(event.target===this)closeRecModal()">
+  <div id="rec-modal">
+    <button id="rec-modal-close" onclick="closeRecModal()">✕</button>
+    <div id="rec-modal-body"></div>
+  </div>
+</div>
+
+
+<!-- Date picker popup -->
+<div id="date-picker-popup" style="display:none;position:fixed;top:58px;right:16px;background:var(--sf);border:1px solid var(--bd2);border-radius:var(--rl);padding:16px;z-index:9999;box-shadow:0 8px 32px rgba(0,0,0,.18);min-width:290px">
+  <div style="font-size:11px;font-weight:600;color:var(--ht);text-transform:uppercase;letter-spacing:.05em;margin-bottom:10px">Custom date range</div>
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px">
+    <div><label style="font-size:10px;color:var(--ht);display:block;margin-bottom:3px">From</label><input type="date" id="date-from" style="width:100%;padding:6px 8px;border:1px solid var(--bd2);border-radius:var(--r);background:var(--sf2);color:var(--tx);font-size:12px;outline:none"/></div>
+    <div><label style="font-size:10px;color:var(--ht);display:block;margin-bottom:3px">To</label><input type="date" id="date-to" style="width:100%;padding:6px 8px;border:1px solid var(--bd2);border-radius:var(--r);background:var(--sf2);color:var(--tx);font-size:12px;outline:none"/></div>
+  </div>
+  <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px">
+    <button onclick="setQuickRange('ytd')" style="padding:4px 9px;border:1px solid var(--bd2);border-radius:var(--r);font-size:11px;cursor:pointer;background:var(--sf2);color:var(--mt)">YTD</button>
+    <button onclick="setQuickRange('q1')"  style="padding:4px 9px;border:1px solid var(--bd2);border-radius:var(--r);font-size:11px;cursor:pointer;background:var(--sf2);color:var(--mt)">Q1</button>
+    <button onclick="setQuickRange('q2')"  style="padding:4px 9px;border:1px solid var(--bd2);border-radius:var(--r);font-size:11px;cursor:pointer;background:var(--sf2);color:var(--mt)">Q2</button>
+    <button onclick="setQuickRange('last30')" style="padding:4px 9px;border:1px solid var(--bd2);border-radius:var(--r);font-size:11px;cursor:pointer;background:var(--sf2);color:var(--mt)">Last 30d</button>
+    <button onclick="setQuickRange('last90')" style="padding:4px 9px;border:1px solid var(--bd2);border-radius:var(--r);font-size:11px;cursor:pointer;background:var(--sf2);color:var(--mt)">Last 90d</button>
+  </div>
+  <div style="display:flex;gap:6px">
+    <button onclick="applyCustomRange()" style="flex:1;padding:8px;background:var(--green);color:white;border:none;border-radius:var(--r);font-size:12px;font-weight:500;cursor:pointer;font-family:'DM Sans',sans-serif">Apply range</button>
+    <button onclick="hideDatePicker()" style="padding:8px 12px;border:1px solid var(--bd2);border-radius:var(--r);font-size:12px;cursor:pointer;background:var(--sf2);color:var(--mt);font-family:'DM Sans',sans-serif">Cancel</button>
+  </div>
+</div>
+
+<!-- ── MARKETING CO-PILOT ── -->
+
+<!-- FAB Button -->
+<button id="copilot-fab" onclick="toggleCopilot()" title="Marketing Co-pilot — Ask me anything">
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M12 2a8 8 0 0 1 8 8c0 5-8 13-8 13S4 15 4 10a8 8 0 0 1 8-8z" opacity=".25" fill="currentColor" stroke="none"/>
+    <circle cx="12" cy="10" r="3"/>
+    <path d="M7 20.662A9.955 9.955 0 0 0 12 22a9.955 9.955 0 0 0 5-1.338"/>
+    <path d="M5.52 17.6A9.98 9.98 0 0 1 2 10a10 10 0 0 1 20 0 9.98 9.98 0 0 1-3.52 7.6"/>
+  </svg>
+  <span class="cp-fab-dot"></span>
+</button>
+
+<!-- Co-pilot Panel -->
+<div id="copilot-panel">
+
+  <!-- Header -->
+  <div class="cp-header">
+    <div class="cp-header-icon">✦</div>
+    <div style="flex:1;min-width:0">
+      <div class="cp-header-title">Marketing Co-pilot</div>
+      <div class="cp-header-sub">Próximo Rol · Acceso a todos los módulos</div>
+    </div>
+    <div class="cp-header-actions">
+      <button id="cp-deep-btn" class="cp-icon-btn" onclick="cpToggleDeepMode()" title="Activar Modo Profundo (Opus) para la siguiente respuesta">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
+        </svg>
+      </button>
+      <button class="cp-icon-btn" onclick="cpClearHistory()" title="Nueva conversación">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 .49-3.46"/>
+        </svg>
+      </button>
+      <button class="cp-icon-btn" onclick="toggleCopilot()" title="Cerrar">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round">
+          <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+        </svg>
+      </button>
+    </div>
+  </div>
+
+  <!-- Messages -->
+  <div id="cp-messages"></div>
+
+  <!-- Quick suggestions -->
+  <div id="cp-sugg"></div>
+
+  <!-- Input -->
+  <div class="cp-input-row">
+    <textarea
+      id="cp-input"
+      placeholder="Pregunta sobre tus datos, pide contenido, un plan de acción..."
+      rows="1"
+      onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();cpSend();}"
+      oninput="cpAutoResize(this)"
+    ></textarea>
+    <button id="cp-send" onclick="cpSend()" title="Enviar">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+        <line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/>
+      </svg>
+    </button>
+  </div>
+
+  <!-- Save Session bar (solo visible cuando hay intercambios sin guardar) -->
+  <div style="padding:0 12px 10px;flex-shrink:0">
+    <button id="cp-save-btn" onclick="cpSaveSession()" style="display:none;width:100%;padding:6px 12px;background:var(--pp);color:var(--purple);border:1px solid #DDD6FE;border-radius:var(--r);font-size:11px;font-weight:500;cursor:pointer;font-family:'DM Sans',sans-serif;gap:5px;align-items:center;justify-content:center;transition:all .15s"></button>
+  </div>
+
+</div>
+
+<!-- Dashboard modules — loaded in order at bottom of body -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="js/core.js"></script>
+<script src="js/analytics.js"></script>
+<script src="js/social.js"></script>
+<script src="js/pipeline.js"></script>
+<script src="js/budget.js"></script>
+<script src="js/budget_v2.js"></script>
+<script src="js/settings.js"></script>
+<script src="js/intelligence.js"></script>
+<script src="js/identity_block.js"></script>
+<script src="js/content.js"></script>
+<script src="js/audit.js"></script>
+<script src="js/prospecting.js"></script>
+<script src="js/guide.js"></script>
+<script src="js/instagram.js"></script>
+<script src="js/visual_studio.js"></script>
+<script src="js/copilot.js"></script>
+<script src="js/alerts.js"></script>
+<script src="js/memory.js"></script>
+<script src="js/experiments.js"></script>
+<script src="js/pnl.js"></script>
+<script src="js/review.js"></script>
+<script src="js/library.js"></script>
+<script>init();</script>
+</body>
+</html>
