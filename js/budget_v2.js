@@ -39,19 +39,38 @@ function bgt2SyncGlobal(cfg){
 function renderBudgetPage(){
   const cfg=bgt2Load();
   if(!cfg){ bgt2ShowSetup(); return; }
+
+  /* 1. Sincronizar BGT_DATA PRIMERO */
   bgt2SyncGlobal(cfg);
-  /* Ocultar wizard si estaba visible */
+
+  /* 2. Debug — ver en consola qué llega */
+  console.log('[Budget] cats:', Object.keys(BGT_DATA.catColors).length,
+    '| rows:', BGT_DATA.rows.length,
+    '| _bgtOrigRender:', typeof _bgtOrigRender,
+    '| annual:', BGT_DATA.annualTotal);
+
+  /* 3. Ocultar wizard */
   const sw=document.getElementById('bgt2-setup');
   if(sw) sw.style.display='none';
-  /* Mostrar contenido normal */
+
+  /* 4. Mostrar divs */
   ['budget-insights-wrap','budget-bar-chart','budget-ytd-bars','budget-detail-table']
     .forEach(id=>{const e=document.getElementById(id);if(e)e.style.display='';});
-  /* Toolbar */
+
+  /* 5. Toolbar */
   bgt2EnsureToolbar(cfg);
-  /* Llamar la original tras un frame para garantizar que los divs
-     están en el layout antes de escribir contenido en ellos */
-  requestAnimationFrame(()=>{ if(_bgtOrigRender) _bgtOrigRender(); });
-  /* Patch upload buttons */
+
+  /* 6. Renderizar — doble rAF + setTimeout como triple safety */
+  function _doRender(){
+    try{
+      if(typeof _bgtOrigRender==='function') _bgtOrigRender();
+      else console.warn('[Budget] _bgtOrigRender no disponible');
+    }catch(err){ console.error('[Budget] Error render:', err); }
+  }
+  requestAnimationFrame(()=>requestAnimationFrame(_doRender));
+  setTimeout(_doRender, 200);
+
+  /* 7. Patch upload */
   setTimeout(()=>bgt2PatchUpload(cfg),100);
 }
 
