@@ -48,8 +48,9 @@ function renderBudgetPage(){
     .forEach(id=>{const e=document.getElementById(id);if(e)e.style.display='';});
   /* Toolbar */
   bgt2EnsureToolbar(cfg);
-  /* Llamar la original (ahora lee el BGT_DATA actualizado) */
-  if(_bgtOrigRender) _bgtOrigRender();
+  /* Llamar la original tras un frame para garantizar que los divs
+     están en el layout antes de escribir contenido en ellos */
+  requestAnimationFrame(()=>{ if(_bgtOrigRender) _bgtOrigRender(); });
   /* Patch upload buttons */
   setTimeout(()=>bgt2PatchUpload(cfg),100);
 }
