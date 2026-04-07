@@ -560,13 +560,13 @@ async function cpStream(userMsg) {
 
     /* ── Experiment tracking — crear experimento si la respuesta es accionable ── */
     if (typeof expDetectActionable === 'function' && expDetectActionable(fullText)) {
-      var _expChannel = typeof expDetectChannel === 'function' ? expDetectChannel(userMsg) : 'general';
+      var _expChannel = typeof expDetectChannel === 'function' ? expDetectChannel(userMsg + ' ' + fullText) : 'general';
       var _expRecId = null;
       if (typeof memAddRecommendation === 'function') {
         _expRecId = memAddRecommendation({ text: fullText.slice(0, 300), category: _expChannel, channel: _expChannel, priority: 'medium' });
       }
       var _expId = typeof expCreateFromRecommendation === 'function'
-        ? expCreateFromRecommendation(_expRecId, fullText.slice(0, 300), _expChannel, 'TBD')
+        ? expCreateFromRecommendation(_expRecId, fullText, _expChannel, 'TBD', userMsg)
         : null;
       if (_expId) {
         cpAddMsg('assistant',

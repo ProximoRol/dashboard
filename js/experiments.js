@@ -72,16 +72,18 @@ function expGetById(expId) {
    CREAR EXPERIMENTO
 ══════════════════════════════════════════ */
 
-function expCreateFromRecommendation(recId, recText, channel, expectedOutcome) {
+function expCreateFromRecommendation(recId, recText, channel, expectedOutcome, userQuestion) {
   var data = expLoad();
   var exp = {
     id: 'exp_' + Date.now(),
     recommendationId: recId || null,
     date: new Date().toISOString().slice(0, 10),
     channel: channel || 'general',
+    userQuestion: (userQuestion || '').slice(0, 300),
     recommendation: {
-      text: (recText || '').slice(0, 200),
-      expectedOutcome: expectedOutcome || 'TBD'
+      text: (recText || '').slice(0, 300),
+      expectedOutcome: expectedOutcome || 'TBD',
+      summarized: false
     },
     implementation: { status: 'planning', dateStarted: null, dateCompleted: null, details: {} },
     measurement: { status: 'pending', dateOfMeasurement: null, metrics: {}, attribution: {} },
@@ -92,7 +94,50 @@ function expCreateFromRecommendation(recId, recText, channel, expectedOutcome) {
   if (data.experiments.length > EXP_MAX) data.experiments = data.experiments.slice(0, EXP_MAX);
   data.totalExperiments++;
   expSave(data);
+
+  /* Resumir con Claude en background (async, no bloquea) */
+  expSummarizeAsync(exp.id, userQuestion, recText);
+
   return exp.id;
+}
+
+/* ══════════════════════════════════════════
+   RESUMEN INTELIGENTE — Claude extrae título + canal + outcome
+══════════════════════════════════════════ */
+
+async function expSummarizeAsync(expId, userQuestion, fullResponse) {
+  if (!CFG || !CFG.ak) return;
+  try {
+    var resp = await antFetch({
+      model: 'claude-haiku-4-5-20251001',
+      max_tokens: 200,
+      messages: [{ role: 'user', content:
+        'PREGUNTA DEL USUARIO: ' + (userQuestion || '').slice(0, 300) +
+        '\n\nRESPUESTA DEL COPILOT (primeros 2000 chars): ' + (fullResponse || '').slice(0, 2000) +
+        '\n\nExtrae en JSON sin markdown ni backticks:' +
+        '\n{"title":"titulo corto del plan/accion en max 60 chars",' +
+        '"channel":"linkedin|email|seo|ads|instagram|content|general",' +
+        '"expectedOutcome":"resultado esperado en max 40 chars",' +
+        '"keyActions":"2-3 acciones principales separadas por |, max 100 chars total"}'
+      }]
+    });
+    var raw = (resp.content || []).filter(function(b) { return b.type === 'text'; }).map(function(b) { return b.text; }).join('').trim();
+    var parsed = JSON.parse(raw.replace(/```json|```/g, '').trim());
+
+    var data = expLoad();
+    var exp = data.experiments.find(function(e) { return e.id === expId; });
+    if (!exp) return;
+
+    if (parsed.title) exp.recommendation.text = parsed.title;
+    if (parsed.channel) exp.channel = parsed.channel;
+    if (parsed.expectedOutcome) exp.recommendation.expectedOutcome = parsed.expectedOutcome;
+    if (parsed.keyActions) exp.recommendation.keyActions = parsed.keyActions;
+    exp.recommendation.summarized = true;
+
+    expSave(data);
+    expRenderPage();
+    expUpdateBadge();
+  } catch (_) {}
 }
 
 /* ══════════════════════════════════════════
@@ -541,6 +586,9 @@ function expRenderCard(exp) {
   html += '<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:10px">';
   html += '<div style="flex:1">';
   html += '<div style="font-size:13px;font-weight:500;color:var(--tx)">' + exp.recommendation.text.replace(/</g, '&lt;') + '</div>';
+  if (exp.userQuestion) {
+    html += '<div style="font-size:11px;color:var(--ht);margin-top:2px;font-style:italic">Pregunta: &ldquo;' + exp.userQuestion.slice(0, 80).replace(/</g, '&lt;') + (exp.userQuestion.length > 80 ? '...' : '') + '&rdquo;</div>';
+  }
   html += '<div style="font-size:11px;color:var(--ht);margin-top:3px">';
   html += exp.channel + ' &middot; ' + exp.date;
   if (exp.analysis.conclusion) {
@@ -549,7 +597,14 @@ function expRenderCard(exp) {
   if (exp.analysis.roi) {
     html += ' &middot; ROI ' + exp.analysis.roi + 'x';
   }
-  html += '</div></div>';
+  html += '</div>';
+  if (exp.recommendation.expectedOutcome && exp.recommendation.expectedOutcome !== 'TBD') {
+    html += '<div style="font-size:11px;color:var(--mt);margin-top:4px">Objetivo: ' + exp.recommendation.expectedOutcome.replace(/</g, '&lt;') + '</div>';
+  }
+  if (exp.recommendation.keyActions) {
+    html += '<div style="font-size:11px;color:var(--mt);margin-top:2px">Acciones: ' + exp.recommendation.keyActions.replace(/</g, '&lt;').replace(/\|/g, ' &middot; ') + '</div>';
+  }
+  html += '</div>';
   html += '<button onclick="if(confirm(\'Descartar este experimento?\'))expDiscard(\'' + exp.id + '\')" style="background:none;border:none;cursor:pointer;color:var(--ht);font-size:12px;padding:2px" title="Descartar">&times;</button>';
   html += '</div>';
 
