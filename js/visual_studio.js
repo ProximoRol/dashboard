@@ -411,7 +411,7 @@ async function vsBatchGetPrompt(caption, intelligence, styleData, formatData) {
 /* ── Gemini: generar imagen ── */
 async function vsBatchGetImage(prompt, aspectRatio, key) {
   var resp = await fetch(
-    'https://generativelanguage.googleapis.com/v1beta/models/imagen-3.0-generate-001:predict?key=' + key,
+    'https://generativelanguage.googleapis.com/v1/models/imagen-3.0-generate-001:predict?key=' + key,
     {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
