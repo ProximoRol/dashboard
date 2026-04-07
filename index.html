@@ -184,7 +184,7 @@
       <div class="ni" onclick="showP('content',this)"><div class="nico">✍️</div>Content Studio<span class="nb nb-pend" id="nb-content">IA</span></div>
       <div class="ni" style="opacity:.45;cursor:default"><div class="nico">🤖</div>AI Insights<span class="nb nb-pend">Pronto</span></div>
       <div class="ni" style="opacity:.45;cursor:default"><div class="nico">📅</div>Calendario Editorial<span class="nb nb-pend">Pronto</span></div>
-      <div class="ni" style="opacity:.45;cursor:default"><div class="nico">🎨</div>Visual Studio<span class="nb nb-pend">Pronto</span></div>
+      <div class="ni" onclick="showP('vs',loadVisualStudio)"><div class="nico">🎨</div>Visual Studio<span class="nb nb-pend">IA</span></div>
       <div class="ni" style="opacity:.45;cursor:default"><div class="nico">📡</div>Campaign Analyzer<span class="nb nb-pend">Pronto</span></div>
       <div class="ns" style="margin-top:6px">Account</div>
       <div class="ni" onclick="showP('settings',this)"><div class="nico">⚙️</div>Settings</div>
@@ -1066,6 +1066,11 @@
   </div>
 </div>
 
+<div class="page" id="page-vs">
+  <div class="sh"><span class="sl">Visual Studio</span><div class="sln"></div></div>
+  <div id="vs-main"></div>
+</div>
+
 <div class="page" id="page-settings">
       <div class="sh"><span class="sl">Platform Connections</span><div class="sln"></div><button class="info-btn" onclick="openInfoModal('settings')" title="What is this page?">i</button></div>
       <p style="font-size:13px;color:var(--mt);margin-bottom:1.25rem">Add or update credentials anytime. Changes take effect immediately.</p>
@@ -1208,6 +1213,7 @@
 <script src="js/prospecting.js"></script>
 <script src="js/guide.js"></script>
 <script src="js/instagram.js"></script>
+<script src="js/visual_studio.js"></script>
 <script src="js/copilot.js"></script>
 <script src="js/alerts.js"></script>
 <script src="js/memory.js"></script>
