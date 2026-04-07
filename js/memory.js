@@ -336,9 +336,33 @@ Máximo 2 insights y 1 recomendación. Si no hay nada nuevo y concreto, devuelve
 function memBuildSummary(topicHint = null) {
   const mem = memLoad();
 
+  /* ── CAPA INTELIGENTE: Si hay digest reciente, usarlo como base ── */
+  const digest = typeof expGetDigest === 'function' ? expGetDigest() : null;
+  if (digest) {
+    const lines = [];
+    lines.push('## BRIEFING ESTRATÉGICO (auto-generado, basado en experimentos reales)');
+    lines.push(digest);
+
+    /* Agregar solo datos complementarios que el digest no tiene */
+    const pending = mem.recommendations.pending
+      .sort((a,b) => (a.priority === 'high' ? -1 : b.priority === 'high' ? 1 : 0))
+      .slice(0, 2);
+    if (pending.length) {
+      lines.push(`Recomendaciones pendientes: ${pending.map(r => r.text).join(' | ')}`);
+    }
+
+    const lastWeeklyReview = mem.insights.find(i => i.category === 'weekly_review');
+    if (lastWeeklyReview) {
+      lines.push(`Última revisión semanal (${lastWeeklyReview.date}): ${lastWeeklyReview.text}`);
+    }
+
+    return lines.join('\n');
+  }
+
+  /* ── FALLBACK: Construcción estática (3 capas) ── */
   const lines = [];
 
-  /* Perfil */
+  /* CAPA 2: Perfil + calibración numérica */
   const bp = mem.businessProfile;
   if (bp.monthlyClientGoal)  lines.push(`Objetivo: ${bp.monthlyClientGoal} clientes/mes a €${bp.avgTicket || 97}/ticket`);
   if (bp.currentMRR)         lines.push(`MRR actual conocido: €${bp.currentMRR}`);
@@ -346,11 +370,15 @@ function memBuildSummary(topicHint = null) {
   if (bp.mainBottleneck)     lines.push(`Cuello de botella principal: ${bp.mainBottleneck}`);
   if (bp.mainChallenge)      lines.push(`Reto conocido: ${bp.mainChallenge}`);
 
-  /* Calibración */
   const cal = mem.calibration;
-  if (cal.workingKeywords.length)       lines.push(`Keywords que han generado tráfico: ${cal.workingKeywords.slice(0, 5).join(', ')}`);
-  if (cal.workingContentFormats.length) lines.push(`Formatos de contenido que funcionan: ${cal.workingContentFormats.slice(0, 3).join(', ')}`);
-  if (cal.avgCAC) lines.push(`CAC promedio observado: €${cal.avgCAC}`);
+  if (cal.channelConversion && Object.keys(cal.channelConversion).length) {
+    lines.push(`Calibración por canal: ${Object.entries(cal.channelConversion).map(([k,v]) => k + ': ' + v + '%').join(' | ')}`);
+  }
+  if (cal.workingKeywords && cal.workingKeywords.length)       lines.push(`Keywords validadas: ${cal.workingKeywords.slice(0, 5).join(', ')}`);
+  if (cal.workingContentFormats && cal.workingContentFormats.length) lines.push(`Formatos que funcionan: ${cal.workingContentFormats.slice(0, 3).join(', ')}`);
+  if (cal.validatedChannels && cal.validatedChannels.length)  lines.push(`Canales validados: ${cal.validatedChannels.join(', ')}`);
+  if (cal.failedApproaches && cal.failedApproaches.length)    lines.push(`NO funcionó: ${cal.failedApproaches.slice(0, 3).join(' | ')}`);
+  if (cal.avgCAC) lines.push(`CAC promedio: €${cal.avgCAC}`);
 
   /* Recomendaciones pendientes (top 3 por prioridad) */
   const pending = mem.recommendations.pending
@@ -360,22 +388,20 @@ function memBuildSummary(topicHint = null) {
     lines.push(`Recomendaciones pendientes: ${pending.map(r => r.text).join(' | ')}`);
   }
 
-  /* Lo que no funcionó — CRÍTICO para no repetirlo */
+  /* Lo que no funcionó */
   const failed = mem.recommendations.failed.slice(0, 3);
   if (failed.length) {
     lines.push(`NO repetir — intentos fallidos: ${failed.map(r => `${r.text}`).join(' | ')}`);
   }
 
-  /* Insights con alta confianza — siempre muestra los de mayor impacto
-     más los del topic detectado. Nunca excluye insights transversales
-     que podrían revelar el cuello de botella real. */
+  /* CAPA 3: Insights cualitativos (máx 6 en prompt) */
   const highQualityInsights = mem.insights
     .filter(i => (i.confidence || 3) >= 3 && i.actionable)
     .filter(i => !['weekly_review','monthly_review','alert'].includes(i.category))
     .filter(i =>
-      (i.confidence >= 4 && i.revenueImpact === 'high') ||   // siempre: alto impacto real
-      i.category === topicHint ||                             // siempre: topic actual
-      !topicHint                                              // sin topic: todos los buenos
+      (i.confidence >= 4 && i.revenueImpact === 'high') ||
+      i.category === topicHint ||
+      !topicHint
     )
     .slice(0, 6);
 
@@ -383,7 +409,7 @@ function memBuildSummary(topicHint = null) {
     lines.push(`Aprendizajes validados: ${highQualityInsights.map(i => i.text).join(' | ')}`);
   }
 
-  /* Última revisión semanal — contexto reciente de estrategia */
+  /* Última revisión semanal */
   const lastWeeklyReview = mem.insights.find(i => i.category === 'weekly_review');
   if (lastWeeklyReview) {
     lines.push(`Última revisión semanal (${lastWeeklyReview.date}): ${lastWeeklyReview.text}`);

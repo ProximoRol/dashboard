@@ -40,7 +40,7 @@ const CK='eco_v3';
 const COLORS=['#1D9E75','#2563EB','#D97706','#DC2626','#7C3AED','#0891B2','#059669','#BE185D'];
 const TC='#A8A8AC',GC='rgba(0,0,0,0.05)';
 const MONTHS=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
-const TITLES={guide:'Guía del dashboard',ov:'Overview',report:'Monthly Report',ga4:'Google Analytics 4',gsc:'Search Console',ads:'Google Ads',kwi:'Keyword Intelligence',seo:'SEO Intelligence',li:'LinkedIn',inst:'Mailing masivo',ig:'Instagram / Facebook',opps:'Opportunities Pipeline',mon:'CRM',budget:'Budget & Costs',settings:'Settings',content:'Content Studio',audit:'Content Audit',prosp:'Prospecting — Alianzas universitarias'};
+const TITLES={guide:'Guía del dashboard',ov:'Overview',report:'Monthly Report',ga4:'Google Analytics 4',gsc:'Search Console',ads:'Google Ads',kwi:'Keyword Intelligence',seo:'SEO Intelligence',li:'LinkedIn',inst:'Mailing masivo',ig:'Instagram / Facebook',opps:'Opportunities Pipeline',mon:'CRM',budget:'Budget & Costs',settings:'Settings',content:'Content Studio',audit:'Content Audit',prosp:'Prospecting — Alianzas universitarias',exp:'Experimentos'};
 let CFG={},TOKEN=null;
 const CH={};
 
@@ -160,6 +160,7 @@ function showP(id,el){
   // Guide page renders immediately — no charts needed
   if(id==='guide'){ if(typeof renderGuidePage==='function') renderGuidePage(); return; }
   if(id==='prosp'){ if(typeof renderProspectingPage==='function') renderProspectingPage(); return; }
+  if(id==='exp'){ if(typeof expRenderPage==='function') expRenderPage(); if(typeof expUpdateBadge==='function') expUpdateBadge(); return; }
 
   // 4. Render charts after TWO animation frames (ensures browser has painted)
   requestAnimationFrame(()=>{

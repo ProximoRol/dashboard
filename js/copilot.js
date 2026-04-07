@@ -558,6 +558,26 @@ async function cpStream(userMsg) {
     if (typeof cpBufferSession === 'function') cpBufferSession(userMsg, fullText);
     if (typeof memIncrementChats === 'function') memIncrementChats();
 
+    /* ── Experiment tracking — crear experimento si la respuesta es accionable ── */
+    if (typeof expDetectActionable === 'function' && expDetectActionable(fullText)) {
+      var _expChannel = typeof expDetectChannel === 'function' ? expDetectChannel(userMsg) : 'general';
+      var _expRecId = null;
+      if (typeof memAddRecommendation === 'function') {
+        _expRecId = memAddRecommendation({ text: fullText.slice(0, 200), category: _expChannel, channel: _expChannel, priority: 'medium' });
+      }
+      var _expId = typeof expCreateFromRecommendation === 'function'
+        ? expCreateFromRecommendation(_expRecId, fullText.slice(0, 200), _expChannel, 'TBD')
+        : null;
+      if (_expId) {
+        cpAddMsg('assistant',
+          '\n\n---\n**\ud83d\udcca Rastreando esta recomendaci\u00f3n.** ' +
+          'Cuando la implementes, ve a **Experimentos** en la sidebar para reportar resultados. ' +
+          'Ajustar\u00e9 mis recomendaciones futuras bas\u00e1ndome en datos reales.'
+        );
+        if (typeof expUpdateBadge === 'function') expUpdateBadge();
+      }
+    }
+
   } catch (err) {
     CP_HISTORY.pop();
     cpFinalizePlaceholder(placeholderId, `❌ **Error:** ${err.message}\n\nComprueba tu API key en Settings.`);
