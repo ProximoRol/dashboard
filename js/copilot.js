@@ -563,10 +563,10 @@ async function cpStream(userMsg) {
       var _expChannel = typeof expDetectChannel === 'function' ? expDetectChannel(userMsg) : 'general';
       var _expRecId = null;
       if (typeof memAddRecommendation === 'function') {
-        _expRecId = memAddRecommendation({ text: fullText.slice(0, 200), category: _expChannel, channel: _expChannel, priority: 'medium' });
+        _expRecId = memAddRecommendation({ text: fullText.slice(0, 300), category: _expChannel, channel: _expChannel, priority: 'medium' });
       }
       var _expId = typeof expCreateFromRecommendation === 'function'
-        ? expCreateFromRecommendation(_expRecId, fullText.slice(0, 200), _expChannel, 'TBD')
+        ? expCreateFromRecommendation(_expRecId, fullText.slice(0, 300), _expChannel, 'TBD')
         : null;
       if (_expId) {
         cpAddMsg('assistant',
@@ -625,7 +625,7 @@ function cpAddMsg(role, text) {
   avatar.textContent = isUser ? (document.getElementById('sb-av')?.textContent || 'U') : '✦';
   const bubble = document.createElement('div');
   bubble.style.cssText = `max-width:85%;padding:10px 13px;border-radius:12px;font-size:13px;line-height:1.6;${isUser ? 'background:var(--green);color:white;border-bottom-right-radius:3px' : 'background:var(--sf);border:1px solid var(--bd);border-bottom-left-radius:3px'}`;
-  bubble.innerHTML = isUser ? text.replace(/\n/g,'<br>') : cpMd(text);
+  bubble.innerHTML = isUser ? text.replace(/\n/g,'<br>') : cpMd(text) + cpMakeCopyBtn(text);
   div.appendChild(avatar);
   div.appendChild(bubble);
   msgs.appendChild(div);
@@ -655,10 +655,29 @@ function cpUpdatePlaceholder(id, text) {
   if (msgs) msgs.scrollTop = msgs.scrollHeight;
 }
 
+function cpCopyText(btn, text) {
+  navigator.clipboard.writeText(text).then(function() {
+    btn.classList.add('cp-copied');
+    btn.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="20 6 9 17 4 12"/></svg> Copiado';
+    setTimeout(function() {
+      btn.classList.remove('cp-copied');
+      btn.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg> Copiar';
+    }, 2000);
+  }).catch(function() {});
+}
+
+function cpMakeCopyBtn(rawText) {
+  var id = 'cp-raw-' + Date.now() + '-' + Math.random().toString(36).slice(2, 6);
+  window[id] = rawText;
+  return '<button class="cp-copy-btn" onclick="cpCopyText(this,window[\'' + id + '\'])">'
+    + '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg> Copiar'
+    + '</button>';
+}
+
 function cpFinalizePlaceholder(id, text) {
   const el = document.querySelector(`#${id} .cp-bubble`);
   if (!el) return;
-  el.innerHTML = cpMd(text);
+  el.innerHTML = cpMd(text) + cpMakeCopyBtn(text);
   const msgs = document.getElementById('cp-messages');
   if (msgs) msgs.scrollTop = msgs.scrollHeight;
 }
@@ -1122,6 +1141,19 @@ function cpAutoResize(el) {
     }
     #cp-send:hover:not(:disabled) { background:var(--green2); }
     #cp-send svg { width:16px;height:16px; }
+
+    /* Copy button */
+    .cp-copy-btn {
+      display:inline-flex;align-items:center;gap:4px;
+      margin-top:8px;padding:3px 10px;
+      font-size:10px;font-family:'DM Sans',sans-serif;
+      color:var(--ht);background:var(--sf2);
+      border:0.5px solid var(--bd);border-radius:14px;
+      cursor:pointer;transition:all .15s;
+    }
+    .cp-copy-btn:hover { color:var(--green);border-color:var(--green); }
+    .cp-copy-btn.cp-copied { color:var(--green);border-color:var(--green); }
+    .cp-copy-btn svg { width:11px;height:11px; }
   `;
   document.head.appendChild(style);
 

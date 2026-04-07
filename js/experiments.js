@@ -324,9 +324,14 @@ function expDiscard(expId) {
 ══════════════════════════════════════════ */
 
 function expDetectActionable(text) {
-  var actionVerbs = /\b(crea|publica|haz|implementa|configura|prueba|escribe|env[ií]a|registra|conecta|lanza|ejecuta|programa|agenda)\b/i;
-  var specificity = /\d+\s*(posts?|semanas?|personas?|leads?|emails?|art[ií]culos?|d[ií]as?|horas?|sesiones?|campa[ñn]as?)/i;
-  return actionVerbs.test(text) && specificity.test(text);
+  var t = text || '';
+  var actionVerbs = /\b(crea|publica|haz|implementa|configura|prueba|escribe|env[ií]a|registra|conecta|lanza|ejecuta|programa|agenda|graba|dise[ñn]a|prepara|sube|comparte)\b/i;
+  var contentTypes = /\b(post|reel|carrusel|infograf[ií]a|stories?|newsletter|art[ií]culo|blog|landing|campa[ñn]a|anuncio|ad|email|secuencia|webinar)\b/i;
+  var specificity = /\d+\s*(posts?|semanas?|personas?|leads?|emails?|art[ií]culos?|d[ií]as?|horas?|sesiones?|campa[ñn]as?|reels?|stories|carruseles?|slides?|contenidos?|v[ií]deos?)/i;
+  var planIndicators = /\b(plan\b|secuencia|calendario|estrategia|pasos?\b|d[ií]a\s*\d|semana\s*\d|fase\s*\d)/i;
+  var hasAction = actionVerbs.test(t) || contentTypes.test(t);
+  var hasStructure = specificity.test(t) || planIndicators.test(t);
+  return hasAction && hasStructure;
 }
 
 function expDetectChannel(msg) {
