@@ -408,26 +408,38 @@ async function vsBatchGetPrompt(caption, intelligence, styleData, formatData) {
   return { geminiPrompt: match ? match[1].trim() : text.trim() };
 }
 
-/* ── Gemini: generar imagen ── */
+/* ── Gemini 2.0 Flash: generar imagen (funciona con AI Studio key gratuita) ── */
 async function vsBatchGetImage(prompt, aspectRatio, key) {
+  /* Incluir aspect ratio en el prompt ya que generateContent no tiene param nativo */
+  var arHint = aspectRatio === '9:16' ? 'vertical 9:16 aspect ratio, portrait orientation, '
+             : aspectRatio === '4:5'  ? 'portrait 4:5 aspect ratio, '
+             : 'square 1:1 aspect ratio, ';
+
+  var fullPrompt = arHint + prompt;
+
   var resp = await fetch(
-    'https://generativelanguage.googleapis.com/v1/models/imagen-3.0-generate-001:predict?key=' + key,
+    'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-preview-image-generation:generateContent?key=' + key,
     {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        instances: [{ prompt: prompt }],
-        parameters: { sampleCount: 1, aspectRatio: aspectRatio }
+        contents: [{ parts: [{ text: fullPrompt }] }],
+        generationConfig: { responseModalities: ['IMAGE'] }
       })
     }
   );
+
   var data = await resp.json();
   if (data.error) throw new Error(data.error.message || 'Error Gemini');
-  var pred = (data.predictions || [])[0];
-  if (!pred || !pred.bytesBase64Encoded) {
-    throw new Error('Gemini no devolvio imagen. Revisa el prompt o las politicas de contenido.');
+
+  var parts = (data.candidates && data.candidates[0] && data.candidates[0].content && data.candidates[0].content.parts) || [];
+  var imgPart = null;
+  for (var i = 0; i < parts.length; i++) {
+    if (parts[i].inlineData) { imgPart = parts[i]; break; }
   }
-  return { b64: pred.bytesBase64Encoded, mime: pred.mimeType || 'image/png' };
+
+  if (!imgPart) throw new Error('Gemini no devolvio imagen. Revisa que el prompt no viole las politicas de contenido.');
+  return { b64: imgPart.inlineData.data, mime: imgPart.inlineData.mimeType || 'image/png' };
 }
 
 /* ── Progreso ── */
