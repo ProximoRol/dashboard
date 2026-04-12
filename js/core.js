@@ -1,5 +1,6 @@
 /* ═══════════════════════════════════════════════
    CORE — Auth, globals, init, nav, utils, API
+   v4.0 — Module Registry
    ═══════════════════════════════════════════════ */
 
 // ── PASSWORD GATE ──
@@ -33,20 +34,253 @@ async function checkPw(){
 }
 
 
-
-
-
+// ── GLOBALS ─────────────────────────────────────────────────
 const CK='eco_v3';
 const COLORS=['#1D9E75','#2563EB','#D97706','#DC2626','#7C3AED','#0891B2','#059669','#BE185D'];
 const TC='#A8A8AC',GC='rgba(0,0,0,0.05)';
 const MONTHS=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
-const TITLES={guide:'Guía del dashboard',ov:'Overview',report:'Monthly Report',ga4:'Google Analytics 4',gsc:'Search Console',ads:'Google Ads',kwi:'Keyword Intelligence',seo:'SEO Intelligence',li:'LinkedIn',inst:'Mailing masivo',ig:'Instagram / Facebook',opps:'Opportunities Pipeline',mon:'CRM',budget:'Budget & Costs',settings:'Settings',content:'Content Studio',audit:'Content Audit',prosp:'Prospecting — Alianzas universitarias',exp:'Experimentos',vs:'Visual Studio'};
 let CFG={},TOKEN=null;
 const CH={};
 
-/* ── ANTHROPIC API HELPER ──
-   Central function for ALL calls to the Anthropic API.
-   Adds required headers automatically and throws detailed errors. */
+// Estado de módulos habilitados (se carga desde /api/user-modules en Fase 2)
+// Por ahora: todos habilitados (compatibilidad con auth actual)
+let ENABLED_MODULES = null;
+
+
+// ── MODULE REGISTRY ──────────────────────────────────────────
+// Fuente de verdad de todos los módulos del dashboard.
+// Agregar un módulo nuevo = agregar 1 objeto aquí.
+//
+// Propiedades:
+//   title     — texto en el header y sidebar
+//   icon      — emoji del sidebar
+//   group     — sección del sidebar ('analytics','content','growth','finance','ai','admin')
+//   render    — nombre de la función global que renderiza el módulo
+//   protected — true = requiere habilitación explícita (Fase 2)
+//   navOrder  — orden dentro del grupo (menor = primero)
+
+const MODULE_REGISTRY = {
+  // ── General ────────────────────────────────────────────
+  guide: {
+    title:    'Guía del dashboard',
+    icon:     '🗺️',
+    group:    'general',
+    render:   'renderGuidePage',
+    protected: false,
+    navOrder: 0
+  },
+
+  // ── Analytics ──────────────────────────────────────────
+  ov: {
+    title:    'Overview',
+    icon:     '📊',
+    group:    'analytics',
+    render:   'renderOverview',
+    protected: false,
+    navOrder: 0
+  },
+  ga4: {
+    title:    'Google Analytics 4',
+    icon:     '📈',
+    group:    'analytics',
+    render:   'loadGA4Intelligence',
+    protected: false,
+    navOrder: 1
+  },
+  gsc: {
+    title:    'Search Console',
+    icon:     '🔎',
+    group:    'analytics',
+    render:   'loadGSC',
+    protected: false,
+    navOrder: 2
+  },
+  kwi: {
+    title:    'Keyword Intelligence',
+    icon:     '🔑',
+    group:    'analytics',
+    render:   'renderKWIPage',
+    protected: false,
+    navOrder: 3
+  },
+  seo: {
+    title:    'SEO Intelligence',
+    icon:     '🌐',
+    group:    'analytics',
+    render:   'renderSEOPage',
+    protected: false,
+    navOrder: 4
+  },
+  report: {
+    title:    'Monthly Report',
+    icon:     '📋',
+    group:    'analytics',
+    render:   'renderReport',
+    protected: false,
+    navOrder: 5
+  },
+
+  // ── Canales ────────────────────────────────────────────
+  li: {
+    title:    'LinkedIn',
+    icon:     '💼',
+    group:    'channels',
+    render:   'loadLinkedIn',
+    protected: false,
+    navOrder: 0
+  },
+  ig: {
+    title:    'Instagram / Facebook',
+    icon:     '📸',
+    group:    'channels',
+    render:   'loadInstagram',
+    protected: false,
+    navOrder: 1
+  },
+  inst: {
+    title:    'Mailing masivo',
+    icon:     '📧',
+    group:    'channels',
+    render:   'loadInstantly',
+    protected: false,
+    navOrder: 2
+  },
+  paid: {
+    title:    'Paid Media',
+    icon:     '💰',
+    group:    'channels',
+    render:   'renderPaidMediaPage',
+    protected: false,
+    navOrder: 3
+  },
+
+  // ── Content ────────────────────────────────────────────
+  content: {
+    title:    'Content Studio',
+    icon:     '✍️',
+    group:    'content',
+    render:   'csInitChips',
+    protected: true,
+    navOrder: 0
+  },
+  audit: {
+    title:    'Content Audit',
+    icon:     '🔍',
+    group:    'content',
+    render:   'renderAuditPage',
+    protected: true,
+    navOrder: 1
+  },
+  vs: {
+    title:    'Visual Studio',
+    icon:     '🎨',
+    group:    'content',
+    render:   'loadVisualStudio',
+    protected: true,
+    navOrder: 2
+  },
+
+  // ── Growth ─────────────────────────────────────────────
+  opps: {
+    title:    'Opportunities Pipeline',
+    icon:     '🎯',
+    group:    'growth',
+    render:   'renderOppCharts',
+    protected: false,
+    navOrder: 0
+  },
+  prosp: {
+    title:    'Prospecting — Alianzas',
+    icon:     '🤝',
+    group:    'growth',
+    render:   'renderProspectingPage',
+    protected: true,
+    navOrder: 1
+  },
+
+  // ── Finance ────────────────────────────────────────────
+  budget: {
+    title:    'Budget & Costs',
+    icon:     '💶',
+    group:    'finance',
+    render:   'renderBudgetPage',
+    protected: false,
+    navOrder: 0
+  },
+
+  // ── CRM ────────────────────────────────────────────────
+  mon: {
+    title:    'CRM',
+    icon:     '📌',
+    group:    'crm',
+    render:   'loadMonday',
+    protected: false,
+    navOrder: 0
+  },
+
+  // ── AI ─────────────────────────────────────────────────
+  copilot: {
+    title:    'Co-Pilot',
+    icon:     '🤖',
+    group:    'ai',
+    render:   'compRender',
+    protected: true,
+    navOrder: 0
+  },
+
+  // ── Herramientas ───────────────────────────────────────
+  exp: {
+    title:    'Experimentos',
+    icon:     '🧪',
+    group:    'tools',
+    render:   'expRenderPage',
+    protected: false,
+    navOrder: 0
+  },
+  settings: {
+    title:    'Settings',
+    icon:     '⚙️',
+    group:    'tools',
+    render:   'buildSettings',
+    protected: false,
+    navOrder: 1
+  },
+
+  // ── Admin (visible solo si role = 'admin') ─────────────
+  admin: {
+    title:    'Panel Admin',
+    icon:     '🛡️',
+    group:    'admin',
+    render:   'renderAdminPage',
+    protected: true,
+    adminOnly: true,
+    navOrder: 0
+  }
+};
+
+// TITLES — generado automáticamente desde el registry (retrocompatibilidad)
+const TITLES = Object.fromEntries(
+  Object.entries(MODULE_REGISTRY).map(([id, mod]) => [id, mod.title])
+);
+
+// Etiquetas de grupos para el sidebar
+const GROUP_LABELS = {
+  general:   '',           // sin label (solo la guía)
+  analytics: 'Analytics',
+  channels:  'Canales',
+  content:   'Contenido',
+  growth:    'Growth',
+  finance:   'Finanzas',
+  crm:       'CRM',
+  ai:        'IA',
+  tools:     'Herramientas',
+  admin:     'Admin'
+};
+
+
+// ── ANTHROPIC API HELPER (se mantiene para Fase 1-2) ────────
+// ⚠️  DEPRECADO: en Fase 3 todos los módulos migran a /api/claude-proxy
+//     Este helper se elimina al final de Fase 3.
 async function antFetch(body){
   if(!CFG.ak){
     throw new Error('API Key de Anthropic no configurada.\n→ Ve a ⚙️ Settings → "Anthropic API Key" y pega tu clave sk-ant-...\nPuedes crear una en: console.anthropic.com/settings/keys');
@@ -76,24 +310,165 @@ async function antFetch(body){
   return resp.json();
 }
 
-/* ── INIT ── */
+// ── BACKEND FETCH HELPER (para Fase 3+) ─────────────────────
+// Helper para llamar al backend con JWT automático.
+// Uso: await apiFetch('/api/claude-proxy', { method:'POST', body: {...} })
+const API_BASE = 'https://pulso-api-seven.vercel.app';
+
+async function apiFetch(path, options = {}) {
+  // En Fase 2, SUPABASE_JWT se obtiene de Supabase Auth
+  // Por ahora, placeholder para cuando esté implementado
+  const jwt = window.__SUPABASE_JWT__ || null;
+
+  const headers = {
+    'Content-Type': 'application/json',
+    ...(jwt && { 'Authorization': `Bearer ${jwt}` }),
+    ...(options.headers || {})
+  };
+
+  const resp = await fetch(API_BASE + path, {
+    ...options,
+    headers,
+    body: options.body ? JSON.stringify(options.body) : undefined
+  });
+
+  if (!resp.ok) {
+    let detail = '';
+    try { const e = await resp.json(); detail = e?.error || JSON.stringify(e); } catch(_) {}
+    throw new Error(`HTTP ${resp.status} — ${detail}`);
+  }
+
+  return resp.json();
+}
+
+
+// ── NAV — buildSidebar ───────────────────────────────────────
+// Genera la sidebar dinámicamente desde el registry.
+// enabledModules: array de module keys habilitados ['content','audit',...]
+// userRole: 'admin' | 'client'
+function buildSidebar(enabledModules, userRole) {
+  const nav = document.getElementById('sidebar-nav');
+  if (!nav) return;
+
+  // Por compatibilidad: si no se pasan args, mostrar todos los no-protected
+  const enabled = enabledModules || Object.keys(MODULE_REGISTRY);
+  const role    = userRole || 'client';
+
+  const groups = {};
+
+  Object.entries(MODULE_REGISTRY).forEach(([id, mod]) => {
+    // Filtro admin
+    if (mod.adminOnly && role !== 'admin') return;
+
+    // Si el módulo NO es protected → mostrarlo siempre
+    // Si el módulo ES protected → solo mostrarlo si está en la lista de enabled
+    if (mod.protected) {
+      if (!enabled || !enabled.includes(id)) return;
+    }
+
+    if (!groups[mod.group]) groups[mod.group] = [];
+    groups[mod.group].push({ id, ...mod });
+  });
+
+  // Ordenar módulos dentro de cada grupo
+  Object.values(groups).forEach(arr =>
+    arr.sort((a, b) => (a.navOrder || 0) - (b.navOrder || 0))
+  );
+
+  // Renderizar — mismo orden que GROUP_LABELS
+  let html = '';
+  Object.entries(GROUP_LABELS).forEach(([group, label]) => {
+    if (!groups[group] || groups[group].length === 0) return;
+
+    if (label) {
+      html += `<div class="nav-group-label">${label}</div>`;
+    }
+
+    groups[group].forEach(m => {
+      html += `<div class="ni" onclick="showP('${m.id}',this)">${m.icon} ${m.title}</div>`;
+    });
+  });
+
+  nav.innerHTML = html;
+}
+
+
+// ── NAV — showP ──────────────────────────────────────────────
+// Navegación genérica — dispatch desde MODULE_REGISTRY.
+// Reemplaza el if/else chain original.
+function showP(id, el) {
+  // 1. Ocultar todas las páginas y nav items
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.ni').forEach(n => n.classList.remove('active'));
+
+  // 2. Mostrar página target
+  const page = document.getElementById('page-' + id);
+  if (page) page.classList.add('active');
+  if (el)   el.classList.add('active');
+
+  // 3. Actualizar título del header
+  const mod = MODULE_REGISTRY[id];
+  document.getElementById('top-t').textContent = mod?.title || TITLES[id] || id;
+
+  // 4. Ocultar date picker
+  hideDatePicker();
+
+  // 5. Marcar módulos que tienen badge 'live'
+  if (id === 'report')  setNB('rep', 'live');
+  if (id === 'content') setNB('content', 'live');
+
+  // 6. Renderizar el módulo via MODULE_REGISTRY
+  if (!mod) return;
+
+  const renderFn = mod.render;
+  if (!renderFn) return;
+
+  // Double rAF para garantizar que el browser pintó antes de renderizar charts
+  requestAnimationFrame(() => {
+    requestAnimationFrame(() => {
+      if (typeof window[renderFn] === 'function') {
+        window[renderFn]();
+      }
+
+      // Acciones extra por módulo que necesitan lógica adicional
+      if (id === 'exp'  && typeof expUpdateBadge  === 'function') expUpdateBadge();
+      if (id === 'opps' && _OPP_DATA && _OPP_DATA.length === 0)  return; // no renderizar si no hay datos
+
+      // Resize charts después de render
+      setTimeout(() => Object.values(CH).forEach(c => { try { c.resize(); } catch(e) {} }), 100);
+    });
+  });
+}
+
+
+// ── INIT ─────────────────────────────────────────────────────
 function init(){
   const s=localStorage.getItem(CK);
   if(s)CFG=JSON.parse(s);
-  const m={clientId:'i-cid',ga4:'i-ga4',gsc:'i-gsc',ads:'i-ads',adsToken:'i-adstoken',liId:'i-liid',liOrg:'i-liorg',instantly:'i-inst',monday:'i-mon',hunter:'i-hunter',metaToken:'i-metatoken',metaIgId:'i-metaigid',metaPageId:'i-metapageid'};
+  const m={clientId:'i-cid',ga4:'i-ga4',gsc:'i-gsc',ads:'i-ads',adsToken:'i-adstoken',liId:'i-liid',liOrg:'i-liorg',instantly:'i-inst',monday:'i-mon',hunter:'i-hunter',metaToken:'i-metatoken',metaIgId:'i-metaigid',metaPageId:'i-metapageid',metaAdAccountId:'i-metaadaccountid'};
   Object.entries(m).forEach(([k,id])=>{const el=document.getElementById(id);if(el&&CFG[k])el.value=CFG[k];});
-  // Handle LinkedIn OAuth callback (code in URL after redirect)
   if(location.search.includes('code=')&&location.search.includes('state=')){
     const s2=localStorage.getItem(CK);if(s2)CFG=JSON.parse(s2);
-    if(CFG.clientId&&CFG.ga4){document.getElementById('ob').style.display='none';document.getElementById('app').style.display='block';buildSettings();}
+    if(CFG.clientId&&CFG.ga4){showScreen('app');buildSettings();}
     liHandleOAuthCallback();
   }
   updOB();
-  if(!CFG.clientId||!CFG.ga4)setTimeout(()=>tpf('g'),100);
+  // Solo abrir el panel de Google si el onboarding está visible
+  // (evita que se dispare cuando un cliente entra directo al app)
+  if(!CFG.clientId||!CFG.ga4) {
+    setTimeout(() => {
+      const obEl = document.getElementById('ob');
+      if (obEl && obEl.style.display !== 'none') tpf('g');
+    }, 500);
+  }
   setTimeout(compLoadSuggestions, 200);
+
+  // Fase 2: iniciar Supabase Auth
+  if(typeof authInit === 'function') authInit();
 }
 
-/* ── ONBOARDING ── */
+
+// ── ONBOARDING ───────────────────────────────────────────────
 function tpf(id){document.getElementById('pb-'+id).classList.toggle('op');document.getElementById('cv-'+id).classList.toggle('op');}
 function saveG(){
   const cid=document.getElementById('i-cid').value.trim();
@@ -119,16 +494,25 @@ function updOB(){
   document.getElementById('ob-cnt').textContent=c;const btn=document.getElementById('btn-l');const ok=c>0||(CFG.clientId&&CFG.ga4);btn.disabled=!ok;
 }
 
-/* ── LAUNCH ── */
+
+// ── LAUNCH ───────────────────────────────────────────────────
 function launch(){
   const sc='https://www.googleapis.com/auth/analytics.readonly https://www.googleapis.com/auth/webmasters.readonly https://www.googleapis.com/auth/adwords https://www.googleapis.com/auth/userinfo.profile';
   google.accounts.oauth2.initTokenClient({client_id:CFG.clientId,scope:sc,callback:async r=>{
     if(r.error){const e=document.getElementById('ob-err');e.textContent='OAuth error: '+r.error;e.style.display='block';return;}
     TOKEN=r.access_token;
     try{const u=await gF('https://www.googleapis.com/oauth2/v3/userinfo');const n=(u.name||'User').split(' ')[0];document.getElementById('sb-nm').textContent=n;document.getElementById('sb-av').textContent=n.charAt(0);}catch(e){}
-    document.getElementById('ob').style.display='none';document.getElementById('app').style.display='block';
-    buildSettings();loadAll();
-    // Show Guide as entry page
+
+    // Fase 2: usar módulos reales del usuario desde Supabase
+    const modules = window.__USER_MODULES__ || null;
+    const role    = window.__USER_ROLE__    || 'client';
+    buildSidebar(modules, role);
+
+    showScreen('app');
+    buildSettings();
+    loadAll();
+
+    // Mostrar Guide como página de entrada
     setTimeout(()=>{
       document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
       document.querySelectorAll('.ni').forEach(n=>n.classList.remove('active'));
@@ -136,75 +520,52 @@ function launch(){
       if(guidePage) guidePage.classList.add('active');
       const guideNav = document.querySelector('.ni[onclick*="\'guide\'"]');
       if(guideNav) guideNav.classList.add('active');
-      document.getElementById('top-t').textContent = 'Guía del dashboard';
+      document.getElementById('top-t').textContent = MODULE_REGISTRY.guide.title;
       if(typeof renderGuidePage === 'function') renderGuidePage();
     }, 300);
   }}).requestAccessToken();
 }
 
-/* ── NAV ── */
-function showP(id,el){
-  // 1. Hide all pages
-  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
-  document.querySelectorAll('.ni').forEach(n=>n.classList.remove('active'));
-  
-  // 2. Show target page
-  const page = document.getElementById('page-'+id);
-  if(page) page.classList.add('active');
-  if(el) el.classList.add('active');
-  document.getElementById('top-t').textContent=TITLES[id]||id;
-  
-  // 3. Hide date picker popup
-  hideDatePicker();
 
-  // Guide page renders immediately — no charts needed
-  if(id==='guide'){ if(typeof renderGuidePage==='function') renderGuidePage(); return; }
-  if(id==='prosp'){ if(typeof renderProspectingPage==='function') renderProspectingPage(); return; }
-  if(id==='exp'){ if(typeof expRenderPage==='function') expRenderPage(); if(typeof expUpdateBadge==='function') expUpdateBadge(); return; }
-
-  // 4. Render charts after TWO animation frames (ensures browser has painted)
-  requestAnimationFrame(()=>{
-    requestAnimationFrame(()=>{
-      if(id==='ov'){
-        renderOverview();
-      } else if(id==='ig'){
-        loadInstagram().catch(e=>{setNB('ig','err');console.error('Instagram:',e);});
-      } else if(id==='guide'){
-        renderGuidePage();
-      } else if(id==='ga4'){
-        loadGA4Intelligence();
-      } else if(id==='budget'){
-        renderBudgetPage();
-      } else if(id==='kwi'){
-        renderKWIPage();
-      } else if(id==='seo'){
-        renderSEOPage();
-      } else if(id==='report'){
-        setNB('rep','live');
-        renderReport();
-      } else if(id==='content'){
-        setNB('content','live');
-        csInitChips();
-      } else if(id==='audit'){
-        renderAuditPage();
-      } else if(id==='vs'){
-        if(typeof loadVisualStudio==='function') loadVisualStudio();
-      } else if(id==='opps' && _OPP_DATA.length>0){
-        renderOppCharts();
-      }
-      // Resize all charts
-      setTimeout(()=>Object.values(CH).forEach(c=>{try{c.resize();}catch(e){}}), 100);
-    });
-  });
+// ── LAUNCH GOOGLE OAUTH (standalone — para Settings) ─────────
+// Permite conectar Google desde dentro del app, sin pasar por onboarding.
+// Lo llama settings.js cuando el cliente quiere activar GA4/GSC.
+function launchGoogleOAuth() {
+  if (!CFG.clientId) {
+    alert('Primero guarda tu OAuth Client ID en Settings → Google');
+    return;
+  }
+  const sc = 'https://www.googleapis.com/auth/analytics.readonly https://www.googleapis.com/auth/webmasters.readonly https://www.googleapis.com/auth/adwords https://www.googleapis.com/auth/userinfo.profile';
+  google.accounts.oauth2.initTokenClient({
+    client_id: CFG.clientId,
+    scope: sc,
+    callback: async r => {
+      if (r.error) { alert('Error OAuth: ' + r.error); return; }
+      TOKEN = r.access_token;
+      // Actualizar nombre en sidebar con el de Google
+      try {
+        const u = await gF('https://www.googleapis.com/oauth2/v3/userinfo');
+        const n = (u.name || 'User').split(' ')[0];
+        document.getElementById('sb-nm').textContent = n;
+        document.getElementById('sb-av').textContent = n.charAt(0);
+      } catch(e) {}
+      // Recargar datos de analytics
+      loadAll();
+      // Toast de confirmación
+      const t = document.createElement('div');
+      t.className = 'toast';
+      t.textContent = '✓ Google conectado — cargando datos';
+      document.body.appendChild(t);
+      setTimeout(() => t.remove(), 2500);
+    }
+  }).requestAccessToken();
 }
-
-function setD(d,btn){setPreset(d,btn);}
 function setNB(id,st){const el=document.getElementById('nb-'+id);if(!el)return;el.textContent=st==='live'?'Live':st==='pend'?'Soon':st==='man'?'Manual':st==='err'?'Error':'—';el.className='nb '+(st==='live'?'nb-live':st==='pend'?'nb-pend':st==='man'?'nb-pend':'nb-off');}
 function nc(nm,id){const el=document.getElementById(id);if(el)el.innerHTML=`<div class="notice"><strong>${nm} not connected</strong>Add credentials in Settings.<button class="cbtn" onclick="showP('settings',null)">Open Settings →</button></div>`;}
 
-/* ── API ── */
+
+// ── DATE RANGE ───────────────────────────────────────────────
 function fD(d){return d.toISOString().split('T')[0];}
-// ── DATE RANGE SYSTEM ──────────────────────────────────────
 let DAYS = 28;
 let DATE_FROM = null;
 let DATE_TO   = null;
@@ -267,7 +628,9 @@ function applyCustomRange(){
   hideDatePicker();
   loadAll();
 }
-// ────────────────────────────────────────────────────────────
+
+
+// ── GOOGLE API HELPERS ───────────────────────────────────────
 async function gF(url,body){
   const o={headers:{'Authorization':'Bearer '+TOKEN,'Content-Type':'application/json'}};
   if(body){o.method='POST';o.body=JSON.stringify(body);}
@@ -284,23 +647,20 @@ async function ga4Prv(mets){
 }
 async function gscQ(b){return gF(`https://www.googleapis.com/webmasters/v3/sites/${encodeURIComponent(CFG.gsc)}/searchAnalytics/query`,b);}
 async function monQ(q){const r=await fetch('https://api.monday.com/v2',{method:'POST',headers:{'Authorization':CFG.monday,'Content-Type':'application/json'},body:JSON.stringify({query:q})});const d=await r.json();if(d.errors)throw new Error(d.errors[0].message);return d.data;}
+
+
+// ── CHARTS ───────────────────────────────────────────────────
 function mkC(id,type,data,opts){
   const canvas=document.getElementById(id);
   if(!canvas) return;
   if(CH[id]){try{CH[id].destroy();}catch(e){} delete CH[id];}
-  
-  // Get height from parent wrapper's style (e.g. height:220px)
   const wrapper = canvas.parentElement;
   const wrapperH = wrapper ? parseInt(wrapper.style.height)||220 : 220;
   const wrapperW = wrapper ? wrapper.offsetWidth||600 : 600;
-  
-  // Set canvas size explicitly — this bypasses responsive sizing issues
   canvas.width  = wrapperW;
   canvas.height = wrapperH;
   canvas.style.width  = '100%';
   canvas.style.height = wrapperH + 'px';
-  
-  // Build merged options - responsive:false uses canvas w/h directly
   const mergedOpts = {
     responsive: true,
     maintainAspectRatio: false,
@@ -308,34 +668,47 @@ function mkC(id,type,data,opts){
     plugins: { legend: { display: false } },
     ...opts
   };
-  
   CH[id] = new Chart(canvas, { type, data, options: mergedOpts });
-  
-  // Also resize after 200ms to catch any layout shifts
   setTimeout(()=>{ try{ CH[id].resize(); }catch(e){} }, 200);
 }
+
 function fmtGBP(n){return'£'+Math.round(n).toLocaleString();}
 
-/* ── LOAD ALL ── */
+
+// ── LOAD ALL ─────────────────────────────────────────────────
 function loadAll(){
   Object.values(CH).forEach(c=>{try{c.destroy();}catch(e){}});
-  loadGA4().catch(e=>{
-    setNB('ga4','off');
-    console.error('GA4:',e);
-    const errHtml = `<div style="padding:12px;background:var(--rp);border:1px solid #FECACA;border-radius:var(--r);font-size:12px;color:#991B1B;grid-column:1/-1">⚠ GA4 error: ${e.message} — Check that GA4 Property ID is correct and your account has access.</div>`;
-    document.getElementById('ga4-kpis').innerHTML = errHtml;
-    document.getElementById('ov-kpis').innerHTML = errHtml;
-  });
-  if(CFG.gsc){
-    loadGSC().catch(e=>{
-      setNB('gsc','off');
-      const errHtml=`<div style="padding:12px;background:var(--rp);border:1px solid #FECACA;border-radius:var(--r);font-size:12px;color:#991B1B;grid-column:1/-1">⚠ Search Console error: ${e.message}<br><small>Make sure <strong>${CFG.gsc}</strong> is verified in Search Console with this Google account.</small></div>`;
-      document.getElementById('gsc-kpis').innerHTML=errHtml;
+
+  // GA4 y GSC solo si hay TOKEN de Google (admin con OAuth completado)
+  if(TOKEN) {
+    loadGA4().catch(e=>{
+      setNB('ga4','off');
+      console.error('GA4:',e);
+      const errHtml = `<div style="padding:12px;background:var(--rp);border:1px solid #FECACA;border-radius:var(--r);font-size:12px;color:#991B1B;grid-column:1/-1">⚠ GA4 error: ${e.message} — Check that GA4 Property ID is correct and your account has access.</div>`;
+      document.getElementById('ga4-kpis').innerHTML = errHtml;
+      document.getElementById('ov-kpis').innerHTML = errHtml;
     });
+    if(CFG.gsc){
+      loadGSC().catch(e=>{
+        setNB('gsc','off');
+        const errHtml=`<div style="padding:12px;background:var(--rp);border:1px solid #FECACA;border-radius:var(--r);font-size:12px;color:#991B1B;grid-column:1/-1">⚠ Search Console error: ${e.message}<br><small>Make sure <strong>${CFG.gsc}</strong> is verified in Search Console with this Google account.</small></div>`;
+        document.getElementById('gsc-kpis').innerHTML=errHtml;
+      });
+    } else {
+      setNB('gsc','off');
+      nc('Search Console — add URL in Settings','gsc-kpis');
+    }
+    // Google Ads ahora se carga dentro del módulo Paid Media (paid-media-ui.js)
+    setNB('paid','live');
   } else {
-    setNB('gsc','off');
-    nc('Search Console — add URL in Settings','gsc-kpis');
+    // Sin Google OAuth — mostrar estado "not connected" limpio sin errores
+    setNB('ga4','off'); setNB('gsc','off'); setNB('paid','off');
+    const noGoogle = `<div class="notice"><strong>Google no conectado</strong> — Configura tu OAuth Client ID en <button class="cbtn" onclick="showP('settings',null)">Settings →</button></div>`;
+    const ga4El = document.getElementById('ga4-kpis');   if(ga4El) ga4El.innerHTML = noGoogle;
+    const ovEl  = document.getElementById('ov-kpis');    if(ovEl)  ovEl.innerHTML  = noGoogle;
+    const gscEl = document.getElementById('gsc-kpis');   if(gscEl) gscEl.innerHTML = noGoogle;
   }
+
   CFG.instantly?loadInstantly().catch(()=>setNB('inst','off')):(setNB('inst','off'),nc('Instantly','ov-inst'),nc('Instantly','inst-kpis'));
   if(CFG.monday){
     loadMonday().catch(e=>{setNB('mon','off');setNB('opps','off');console.error('Monday:',e);});
@@ -349,16 +722,5 @@ function loadAll(){
   } else {
     setNB('ig','off');
   }
-  if(!CFG.ads){
-    setNB('ads','off');
-    document.getElementById('ads-w').innerHTML='<div class="notice"><strong>Google Ads not connected</strong> — Add your Customer ID in Settings to enable this section.<button class="cbtn" onclick="showP(\'settings\',null)">Open Settings →</button></div>';
-  } else {
-    setNB('ads','...');
-    loadAds().catch(e=>{
-      setNB('ads','off');
-      document.getElementById('ads-w').innerHTML=`<div class="notice" style="background:var(--rp);border-color:#FECACA;color:#991B1B"><strong>Google Ads error:</strong> ${e.message}</div>`;
-    });
-  }
   setTimeout(()=>{document.getElementById('upd-t').textContent='Updated '+new Date().toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'});},3000);
 }
-
