@@ -281,29 +281,9 @@
     </div>
 
     <!-- ADS -->
-    <div class="page" id="page-ads">
-      <div class="sh"><span class="sl">Google Ads</span><div class="sln"></div><button class="info-btn" onclick="openInfoModal('ads')" title="What is this page?">i</button></div>
-      <div class="kr" id="ads-kpis"></div>
-      <div class="cd" style="margin-bottom:12px">
-        <div class="ch"><span class="ct">Campaigns</span><span class="bg bg-g">Last 30 days</span></div>
-        <div id="ads-c"></div>
-      </div>
-      <div id="ads-w"></div>
-
-      <!-- AI Campaign Recommendations -->
-      <div class="cd" style="margin-top:12px">
-        <div class="ch">
-          <span class="ct">Recomendaciones IA — Campañas</span>
-          <span class="bg" style="background:#F5F3FF;color:#7C3AED">Claude AI</span>
-          <button onclick="runAdsAIRecommendations()" id="ads-ai-btn" style="margin-left:auto;padding:5px 14px;background:var(--purple);color:white;border:none;border-radius:var(--r);font-size:11px;font-weight:500;cursor:pointer;display:flex;align-items:center;gap:5px">
-            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 8 12 12 14 14"/></svg>
-            Analizar campañas
-          </button>
-        </div>
-        <div id="ads-ai-out" style="min-height:60px">
-          <div style="padding:16px;text-align:center;color:var(--ht);font-size:13px">Haz clic en "Analizar campañas" para que Claude revise el rendimiento de tus Google Ads y genere recomendaciones específicas para España, UK y LATAM.</div>
-        </div>
-      </div>
+    <div class="page" id="page-paid">
+      <div class="sh"><span class="sl">Paid Media</span><div class="sln"></div></div>
+      <div id="paid-main"></div>
     </div>
 
     <!-- LINKEDIN -->
@@ -1083,7 +1063,7 @@
     <!-- P&L page — contenido inyectado por pnl.js via injectPNLPage() -->
     <div class="page" id="page-pnl"></div>
 
-    <!-- Review page — contenido inyectado por review.js via injectReviewPage() -->
+    <!-- Review page — contenido inyectado por review-ui.js via injectReviewPage() -->
     <div class="page" id="page-review"></div>
 
   </div>
@@ -1199,6 +1179,7 @@
 
 <!-- Dashboard modules — loaded in order at bottom of body -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="js/currency.js"></script>
 <script src="js/core.js"></script>
 <script src="js/analytics.js"></script>
 <script src="js/social.js"></script>
@@ -1206,7 +1187,8 @@
 <script src="js/budget.js"></script>
 <script src="js/budget_v2.js"></script>
 <script src="js/settings.js"></script>
-<script src="js/intelligence.js"></script>
+<script src="js/intelligence-ui.js"></script>
+<script src="js/paid-media-ui.js"></script>
 <script src="js/identity_block.js"></script>
 <script src="js/content.js"></script>
 <script src="js/audit.js"></script>
@@ -1214,13 +1196,14 @@
 <script src="js/guide.js"></script>
 <script src="js/instagram.js"></script>
 <script src="js/visual_studio.js"></script>
-<script src="js/copilot.js"></script>
+<script src="js/copilot-ui.js"></script>
 <script src="js/alerts.js"></script>
-<script src="js/memory.js"></script>
+<script src="js/memory-ui.js"></script>
 <script src="js/experiments.js"></script>
 <script src="js/pnl.js"></script>
-<script src="js/review.js"></script>
+<script src="js/review-ui.js"></script>
 <script src="js/library.js"></script>
+<script src="js/credits-ui.js"></script>
 <script>init();</script>
 </body>
 </html>
