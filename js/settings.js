@@ -1,7 +1,6 @@
 /* ═══════════════════════════════════════════════
-   SETTINGS — Panel de configuración de APIs
-   Depends on: core.js (CFG, CK, loadAll)
-   Extracted from budget.js — Issue #2
+   SETTINGS — Panel de configuración de APIs + Preferencias
+   Depends on: core.js (CFG, CK, loadAll), currency.js (getUserCurrency)
    ═══════════════════════════════════════════════ */
 
 function buildSettings(){
@@ -13,13 +12,39 @@ function buildSettings(){
     {id:'inst',icon:'📧',name:'Mailing masivo (Instantly)',bg:'#F5F3FF',fields:[{k:'instantly',l:'API Key',ph:'inst_xxxxxxxxxxxx',hint:'<a href="https://app.instantly.ai/app/settings/integrations" target="_blank">Instantly</a> → API'}]},
     {id:'mon',icon:'🏢',name:'CRM',bg:'#ECFEFF',fields:[{k:'monday',l:'API Token',ph:'eyJhbGciOiJ…',hint:'<a href="https://monday.com/apps/manage/tokens" target="_blank">Monday</a> → Developers'}]},
     {id:'hunter',icon:'🎯',name:'Hunter.io — Prospecting universitario',bg:'#FFF7ED',fields:[{k:'hunter',l:'API Key',ph:'xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx',hint:'<a href="https://hunter.io/api-keys" target="_blank">hunter.io/api-keys</a> — Plan gratuito: 50 búsquedas/mes'}]},
-    {id:'meta',icon:'📸',name:'Instagram / Facebook',bg:'#FFF0F9',fields:[{k:'metaToken',l:'Access Token',ph:'EAAxxxxxxx…',hint:'<a href="https://developers.facebook.com/tools/explorer" target="_blank">Graph API Explorer</a> → Selecciona "Proximorol Dashboard" → Generate Access Token'},{k:'metaIgId',l:'Instagram Account ID',ph:'17841439267939398',hint:'Tu Instagram Business Account ID'},{k:'metaPageId',l:'Facebook Page ID (opcional)',ph:'1092607287263365',hint:'ID de tu página de Facebook — para métricas de Facebook'}]},
+    {id:'meta',icon:'📸',name:'Instagram / Facebook + Meta Ads',bg:'#FFF0F9',fields:[{k:'metaToken',l:'Access Token',ph:'EAAxxxxxxx…',hint:'<a href="https://developers.facebook.com/tools/explorer" target="_blank">Graph API Explorer</a> → Selecciona "Proximorol Dashboard" → Generate Access Token'},{k:'metaIgId',l:'Instagram Account ID',ph:'17841439267939398',hint:'Tu Instagram Business Account ID'},{k:'metaPageId',l:'Facebook Page ID (opcional)',ph:'1092607287263365',hint:'ID de tu página de Facebook — para métricas de Facebook'},{k:'metaAdAccountId',l:'Meta Ad Account ID (Paid Media)',ph:'act_123456789',hint:'<a href="https://business.facebook.com/adsmanager" target="_blank">Ads Manager</a> → Menú ☰ → Ad Account ID. Formato: <strong>act_NÚMEROS</strong>'}]},
   ];
-  document.getElementById('stg').innerHTML=pfs.map(pf=>{
+
+  // ── Sección de preferencias (moneda) ──────────────
+  const curCode = (typeof getUserCurrency === 'function') ? getUserCurrency().code : 'GBP';
+  const curOptions = (typeof getCurrencyOptions === 'function') ? getCurrencyOptions() : [];
+  const prefsHtml = curOptions.length > 0 ? `
+    <div class="sc2" style="margin-top:20px">
+      <div class="scH" onclick="tgS('prefs')">
+        <div class="sico" style="background:#F0F9FF">⚙️</div>
+        <div style="flex:1;font-size:13px;font-weight:500">Preferencias</div>
+        <svg style="width:16px;height:16px;color:var(--ht);transition:transform .2s;margin-left:8px" id="sch-prefs" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg>
+      </div>
+      <div class="sbdy" id="sbd-prefs">
+        <div class="fl">
+          <label class="fl-l">Moneda del dashboard</label>
+          <select id="sf-currency" class="fi" style="padding:8px">
+            ${curOptions.map(c => `<option value="${c.code}" ${c.code === curCode ? 'selected' : ''}>${c.name}</option>`).join('')}
+          </select>
+          <div class="fh">Afecta KPIs de Paid Media, reviews y Co-Pilot. Los precios del producto (€97) no cambian.</div>
+        </div>
+        <div class="sa">
+          <button class="btn-s" onclick="svCurrency()">Guardar</button>
+        </div>
+      </div>
+    </div>` : '';
+
+  // ── Render ──────────────────────────────────────────
+  document.getElementById('stg').innerHTML = pfs.map(pf=>{
     const conn=pf.id==='g'?!!(CFG.clientId&&CFG.ga4):pf.id==='anthropic'?!!CFG.ak:pf.fields.some(f=>CFG[f.k]);
     const flds=pf.fields.map(f=>`<div class="fl"><label class="fl-l">${f.l}</label><input class="fi" id="sf-${f.k}" value="${(CFG[f.k]||'')}" placeholder="${f.ph}" ${f.k==='ak'?'type="password"':''}/>${f.hint?`<div class="fh">${f.hint}</div>`:''}</div>`).join('');
     return`<div class="sc2"><div class="scH" onclick="tgS('${pf.id}')"><div class="sico" style="background:${pf.bg}">${pf.icon}</div><div style="flex:1;font-size:13px;font-weight:500">${pf.name}</div><span style="font-size:11px;color:${conn?'var(--green)':'var(--ht)'}">${conn?'● Configurado':'○ Sin configurar'}</span><svg style="width:16px;height:16px;color:var(--ht);transition:transform .2s;margin-left:8px" id="sch-${pf.id}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg></div><div class="sbdy" id="sbd-${pf.id}">${flds}<div class="sa"><button class="btn-s" onclick="svS('${pf.id}')">Guardar</button><button class="btn-c" onclick="clrS('${pf.id}')">Borrar</button></div></div></div>`;
-  }).join('');
+  }).join('') + prefsHtml;
 }
 
 function tgS(id){
@@ -30,8 +55,7 @@ function tgS(id){
 }
 
 function svS(id){
-  // ── CAMBIO: añadir gemini al mapa de guardado ──
-  const m={anthropic:{ak:'sf-ak'},openai:{openaiKey:'sf-openaiKey'},g:{clientId:'sf-clientId',ga4:'sf-ga4',gsc:'sf-gsc',ads:'sf-ads',adsToken:'sf-adsToken'},li:{liId:'sf-liId',liSecret:'sf-liSecret',liOrg:'sf-liOrg',liToken:'sf-liToken'},inst:{instantly:'sf-instantly'},mon:{monday:'sf-monday'},hunter:{hunter:'sf-hunter'},meta:{metaToken:'sf-metaToken',metaIgId:'sf-metaIgId',metaPageId:'sf-metaPageId'}};
+  const m={anthropic:{ak:'sf-ak'},openai:{openaiKey:'sf-openaiKey'},g:{clientId:'sf-clientId',ga4:'sf-ga4',gsc:'sf-gsc',ads:'sf-ads',adsToken:'sf-adsToken'},li:{liId:'sf-liId',liSecret:'sf-liSecret',liOrg:'sf-liOrg',liToken:'sf-liToken'},inst:{instantly:'sf-instantly'},mon:{monday:'sf-monday'},hunter:{hunter:'sf-hunter'},meta:{metaToken:'sf-metaToken',metaIgId:'sf-metaIgId',metaPageId:'sf-metaPageId',metaAdAccountId:'sf-metaAdAccountId'}};
   Object.entries(m[id]||{}).forEach(([k,eid])=>{
     const el=document.getElementById(eid);
     if(el){let v=el.value.trim();if(k==='ga4'&&v&&!v.startsWith('properties/'))v='properties/'+v;CFG[k]=v;}
@@ -43,9 +67,15 @@ function svS(id){
   const t=document.createElement('div');t.className='toast';t.textContent='✓ Guardado — recargando datos';document.body.appendChild(t);setTimeout(()=>t.remove(),2500);
 }
 
+function svCurrency(){
+  const sel=document.getElementById('sf-currency');
+  if(sel){CFG.currency=sel.value;localStorage.setItem(CK,JSON.stringify(CFG));}
+  buildSettings();
+  const t=document.createElement('div');t.className='toast';t.textContent='✓ Moneda actualizada';document.body.appendChild(t);setTimeout(()=>t.remove(),2500);
+}
+
 function clrS(id){
-  // ── CAMBIO: añadir gemini al mapa de borrado ──
-  const m={anthropic:['ak'],openai:['openaiKey'],g:['clientId','ga4','gsc','ads'],li:['liId','liSecret','liOrg','liToken'],inst:['instantly'],mon:['monday'],hunter:['hunter'],meta:['metaToken','metaIgId','metaPageId']};
+  const m={anthropic:['ak'],openai:['openaiKey'],g:['clientId','ga4','gsc','ads'],li:['liId','liSecret','liOrg','liToken'],inst:['instantly'],mon:['monday'],hunter:['hunter'],meta:['metaToken','metaIgId','metaPageId','metaAdAccountId']};
   (m[id]||[]).forEach(k=>CFG[k]='');
   localStorage.setItem(CK,JSON.stringify(CFG));
   buildSettings();
